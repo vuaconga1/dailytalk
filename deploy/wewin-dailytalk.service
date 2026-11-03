@@ -1,0 +1,16 @@
+# /etc/systemd/system/wewin-dailytalk.service
+[Unit]
+Description=WeWIN Daily Speaking
+After=network.target
+
+[Service]
+Type=simple
+User=wewin
+WorkingDirectory=/opt/wewin-daily-speaking
+EnvironmentFile=/opt/wewin-daily-speaking/.env
+ExecStart=/usr/bin/python3 /opt/wewin-daily-speaking/server.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

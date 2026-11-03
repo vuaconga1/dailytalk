@@ -1,0 +1,11 @@
+{
+  "fluid": true,
+  "builds": [
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python",
+      "config": { "includeFiles": ["web/**", "*.py"], "maxDuration": 60 }
+    }
+  ],
+  "routes": [{ "src": "/(.*)", "dest": "api/index.py" }]
+}

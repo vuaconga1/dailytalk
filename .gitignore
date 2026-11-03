@@ -1,0 +1,7 @@
+.env
+.preview-origin
+.vercel
+data/
+__pycache__/
+*.pyc
+.DS_Store
