@@ -1,0 +1,227 @@
+@import "tailwindcss";
+
+:root {
+  /* WeWIN Brand Color Tokens - Aligned with WeWIN IELTS Reference */
+  --ww-navy: #091734;
+  --ww-navy-deep: #061025;
+  --ww-navy-light: #132752;
+  --ww-navy-soft: #e8eefb;
+
+  --ww-gold: #d97706;
+  --ww-gold-light: #f59e0b;
+  --ww-gold-soft: #fef3c7;
+
+  --ww-blue-soft: #e8f0fe;
+  --ww-blue-accent: #1a56db;
+
+  --ww-ink: #091734;
+  --ww-ink-secondary: #273b5f;
+  --ww-muted: #5e7292;
+
+  --ww-line: #e2e8f4;
+  --ww-line-light: #f1f5fc;
+
+  --ww-bg: #edf3fd;
+  --ww-surface: #ffffff;
+
+  --ww-danger: #dc2626;
+  --ww-success: #059669;
+  --ww-success-soft: #ecfdf5;
+
+  --ww-teal: #0284c7;
+  --ww-teal-light: #0ea5e9;
+  --ww-teal-soft: #e0f2fe;
+}
+
+@theme inline {
+  --color-navy: var(--ww-navy);
+  --color-navy-deep: var(--ww-navy-deep);
+  --color-navy-light: var(--ww-navy-light);
+  --color-navy-soft: var(--ww-navy-soft);
+  --color-gold: var(--ww-gold);
+  --color-gold-light: var(--ww-gold-light);
+  --color-gold-soft: var(--ww-gold-soft);
+  --color-blue-soft: var(--ww-blue-soft);
+  --color-blue-accent: var(--ww-blue-accent);
+  --color-ink: var(--ww-ink);
+  --color-ink-secondary: var(--ww-ink-secondary);
+  --color-muted: var(--ww-muted);
+  --color-line: var(--ww-line);
+  --color-line-light: var(--ww-line-light);
+  --color-surface: var(--ww-surface);
+  --color-danger: var(--ww-danger);
+  --color-success: var(--ww-success);
+  --color-success-soft: var(--ww-success-soft);
+  --color-teal: var(--ww-teal);
+  --color-teal-light: var(--ww-teal-light);
+  --color-teal-soft: var(--ww-teal-soft);
+  --font-sans: var(--font-geist-sans);
+}
+
+body {
+  background: var(--ww-bg);
+  color: var(--ww-ink);
+  font-family: var(--font-geist-sans), "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, system-ui, sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Animations & Transitions for smooth website experience */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.04);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2.5s ease-in-out infinite;
+}
+
+@layer components {
+  /* Website-style Button - Deep Navy Primary */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2.5 rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white no-underline shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-navy-light hover:shadow-md active:translate-y-0 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none;
+  }
+  .btn-gold {
+    @apply bg-gold text-white hover:bg-[#b45309] hover:text-white shadow-sm;
+  }
+  .btn-secondary {
+    @apply bg-white border border-slate-200 text-navy shadow-xs hover:bg-slate-50 hover:text-navy-light;
+  }
+  .btn-outline {
+    @apply border border-[#cbd5e1] bg-white text-navy shadow-xs hover:border-navy hover:bg-navy/5;
+  }
+  .btn-text {
+    @apply bg-transparent p-1.5 text-xs text-muted shadow-none hover:text-navy;
+  }
+
+  /* Website-style Cards - Crisp White with Periwinkle Shadow */
+  .card {
+    @apply rounded-2xl border border-[#e2e8f4] bg-white p-6 shadow-[0_4px_20px_-4px_rgba(20,40,90,0.05),0_1px_3px_rgba(20,40,90,0.03)] transition-all duration-300 hover:shadow-[0_8px_30px_-4px_rgba(20,40,90,0.08)] sm:p-8;
+  }
+  .stat {
+    @apply rounded-xl border border-[#e2e8f4] bg-white px-4 py-4.5 shadow-[0_1px_4px_rgba(20,40,90,0.03)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md sm:px-6;
+  }
+
+  /* Modern Badges & Pills */
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-blue-soft px-3 py-1.5 text-xs font-semibold tracking-wide text-blue-accent border border-blue-200/60;
+  }
+  .badge-gold {
+    @apply bg-amber-50 text-amber-900 border-amber-200/80;
+  }
+  .badge-success {
+    @apply bg-emerald-50 text-emerald-800 border-emerald-200/60;
+  }
+  .badge-navy {
+    @apply bg-navy text-white;
+  }
+
+  /* Typography */
+  .eyebrow {
+    @apply mb-2.5 text-xs font-bold tracking-[2px] uppercase text-gold;
+  }
+  .page-title {
+    @apply text-[clamp(28px,3.4vw,42px)] leading-[1.2] font-extrabold tracking-[-1px] text-navy;
+  }
+  .note {
+    @apply rounded-xl bg-white/90 border border-[#e2e8f4] px-4 py-3.5 text-sm leading-[1.7] text-slate-700 shadow-xs;
+  }
+  .legal {
+    @apply text-xs leading-[1.8] text-muted;
+  }
+  .form-error {
+    @apply mt-4 text-sm text-danger empty:hidden;
+  }
+
+  /* Form Elements */
+  .field {
+    @apply mb-5 grid gap-2;
+  }
+  .field label {
+    @apply text-sm font-semibold text-navy;
+  }
+  .field input:not([type="radio"]):not([type="checkbox"]),
+  .field select,
+  .field textarea {
+    @apply w-full rounded-xl border border-[#cbd5e1] bg-white p-3.5 text-sm text-ink outline-none transition-all duration-200 focus:border-navy focus:ring-2 focus:ring-navy/15;
+  }
+  .field textarea {
+    @apply min-h-[95px] resize-y;
+  }
+  .check {
+    @apply flex items-start gap-3 text-sm text-slate-600 cursor-pointer;
+  }
+  .check input {
+    @apply mt-1 size-4 accent-navy rounded;
+  }
+
+  /* Data Table */
+  .data-table {
+    @apply w-full border-collapse text-left text-sm;
+  }
+  .data-table th {
+    @apply border-b border-line bg-slate-50/75 px-4 py-3 text-xs font-bold tracking-wider text-muted uppercase;
+  }
+  .data-table td {
+    @apply border-b border-slate-100 px-4 py-3.5 align-top;
+  }
+  .data-table tr:last-child td {
+    @apply border-b-0;
+  }
+}
+
+progress {
+  appearance: none;
+  height: 8px;
+  width: 100%;
+  border: 0;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: #e2e8f4;
+}
+progress::-webkit-progress-bar {
+  background: #e2e8f4;
+}
+progress::-webkit-progress-value {
+  background: linear-gradient(90deg, var(--ww-navy), #1d3b7a);
+  border-radius: 9999px;
+}
+progress::-moz-progress-bar {
+  background: linear-gradient(90deg, var(--ww-navy), #1d3b7a);
+  border-radius: 9999px;
+}

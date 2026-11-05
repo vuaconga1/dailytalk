@@ -1,8 +1,0 @@
-dailytalk.wewin.edu.vn {
-	encode gzip
-	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
-	request_body {
-		max_size 5MB
-	}
-	reverse_proxy app:8000
-}

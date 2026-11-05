@@ -1,0 +1,243 @@
+// WeWIN Daily Speaking
+// https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  LEARNER
+  /// Chuyên viên: tư vấn, kích hoạt, theo dõi học viên được giao
+  CONSULTANT
+  /// Học thuật: ngân hàng bài, audio shadowing
+  ACADEMIC
+  ADMIN
+}
+
+enum AccountStatus {
+  /// Đã đăng ký; được khảo sát và học thử 1 buổi, chờ chuyên viên kích hoạt
+  LEAD
+  ACTIVE
+  PAUSED
+  EXPIRED
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  name         String
+  passwordHash String
+  role         Role          @default(LEARNER)
+  status       AccountStatus @default(LEAD)
+  phone        String?
+  /// Throwaway "Trải nghiệm demo" learner; email is <id>@demo.invalid.
+  isDemo       Boolean       @default(false)
+  /// LearnerProfile (see src/lib/types.ts)
+  profile      Json?
+  /// Reference 30-day StudyPlan; the actual next lesson is re-chosen from results.
+  plan         Json?
+  planSource   String?
+  packageName  String?
+  activatedAt  DateTime?
+  accessEndsAt DateTime?
+  consultantId String?
+  consultant   User?         @relation("Consultant", fields: [consultantId], references: [id], onDelete: SetNull)
+  createdAt    DateTime      @default(now())
+
+  learners      User[]         @relation("Consultant")
+  attempts      Attempt[]
+  practices     Practice[]
+  usages        Usage[]
+  zaloLink      ZaloLink?
+  notifications Notification[]
+  weeklyReports WeeklyReport[]
+  notesAbout    StaffNote[]    @relation("NoteLearner")
+  notesWritten  StaffNote[]    @relation("NoteAuthor")
+
+  @@index([role, status])
+  @@index([consultantId])
+}
+
+/// One study day. `lesson` is a snapshot, so content edits never change past sessions.
+model Attempt {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  day             Int
+  /// YYYY-MM-DD in Asia/Ho_Chi_Minh
+  localDate       String
+  lesson          Json
+  /// LessonContent.key the snapshot came from (null for static demo lessons).
+  lessonKey       String?
+  /// Situation title the reference roadmap suggested for this day.
+  plannedTitle    String?
+  /// Deprecated (static-bank era); kept so schema pushes stay non-destructive.
+  plannedLessonId String?
+  /// "plan" | "rule" | "openai": who chose today's situation.
+  selectedBy      String?
+  /// Why this lesson (shown to staff and as the day's focus).
+  focus           String?
+  wordsDone       Boolean  @default(false)
+  shadowDone      Boolean  @default(false)
+  completed       Boolean  @default(false)
+  /// Summary incl. errors / review items (see src/lib/types.ts)
+  summary         Json?
+  createdAt       DateTime @default(now())
+
+  practice Practice?
+
+  @@unique([userId, day])
+  @@index([userId, completed])
+}
+
+/// The 5-minute conversation of an attempt.
+model Practice {
+  id        String    @id @default(cuid())
+  attemptId String    @unique
+  attempt   Attempt   @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startedAt DateTime
+  deadline  DateTime
+  ended     Boolean   @default(false)
+  /// Set while an AI call runs for this session; stale locks expire.
+  busySince DateTime?
+  turns     Json
+
+  @@index([userId, startedAt])
+}
+
+/// AI usage log; `reserve_*` rows are written before each provider call.
+model Usage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String
+  model     String?
+  data      Json
+  createdAt DateTime @default(now())
+
+  @@index([userId, kind, createdAt])
+}
+
+/// Shared lesson bank: detailed content for one situation (industry, position, situation, level).
+/// Generated on the first study day that needs it, then reused by other learners.
+model LessonContent {
+  key       String   @id
+  title     String
+  industry  String
+  position  String
+  level     String
+  /// Lesson (see src/lib/types.ts)
+  lesson    Json
+  /// "openai" | "static"
+  source    String
+  uses      Int      @default(0)
+  createdAt DateTime @default(now())
+  lastUsed  DateTime @default(now())
+
+  @@index([lastUsed])
+}
+
+/// Shared TTS audio, generated once and reused by every learner.
+/// Stored in Cloudflare R2 (`r2Key`) when configured, otherwise inline in `data`.
+model AudioClip {
+  key       String   @id
+  data      Bytes?
+  r2Key     String?
+  bytes     Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+/// Learner ↔ Zalo OA follower. Created when the learner sends their link code to the OA.
+model ZaloLink {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  zaloUserId        String    @unique
+  displayName       String?
+  followed          Boolean   @default(true)
+  /// OA consultation messages are only allowed for a while after the user's last interaction.
+  lastInteractionAt DateTime?
+  linkedAt          DateTime  @default(now())
+}
+
+/// Short-lived code the learner sends to the OA chat to link their account.
+model ZaloLinkCode {
+  code      String   @id
+  userId    String   @unique
+  expiresAt DateTime
+}
+
+/// OA access/refresh tokens. Zalo rotates the refresh token on every refresh.
+model ZaloToken {
+  id           String   @id @default("oa")
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  updatedAt    DateTime @updatedAt
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  /// Not sent on purpose (dry run, not linked, outside messaging window…)
+  SKIPPED
+  FAILED
+}
+
+/// Outbox of outgoing messages; (user, kind, localDate) makes each reminder idempotent.
+model Notification {
+  id        String             @id @default(cuid())
+  userId    String
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel   String             @default("zalo_oa")
+  kind      String
+  localDate String
+  status    NotificationStatus @default(PENDING)
+  text      String
+  reason    String?
+  attempts  Int                @default(0)
+  sentAt    DateTime?
+  createdAt DateTime           @default(now())
+
+  @@unique([userId, kind, localDate])
+  @@index([status, createdAt])
+}
+
+/// Weekly progress snapshot for staff (Monday → Sunday, Vietnam time).
+model WeeklyReport {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStart    String
+  sessionsDone Int
+  activeDays   Int
+  voiceTurns   Int
+  achieved     Int
+  /// Recurring errors / review items collected from the week's summaries.
+  highlights   Json
+  needsSupport Boolean
+  supportNote  String?
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, weekStart])
+  @@index([weekStart, needsSupport])
+}
+
+model StaffNote {
+  id        String   @id @default(cuid())
+  learnerId String
+  learner   User     @relation("NoteLearner", fields: [learnerId], references: [id], onDelete: Cascade)
+  authorId  String?
+  author    User?    @relation("NoteAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([learnerId, createdAt])
+}

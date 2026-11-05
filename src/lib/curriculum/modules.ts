@@ -1,0 +1,233 @@
+import type { CurriculumDay } from "./types";
+
+/** Learners who talk with foreigners on business trips: replaces days 19–20. */
+export const TRAVEL_DAYS: CurriculumDay[] = [
+  {
+    title: "Check in at the hotel",
+    situation: "Nhận phòng khách sạn khi đi công tác nước ngoài",
+    skill: "listening",
+    focus: "Nghe và trả lời câu hỏi thủ tục",
+    goal: "Làm thủ tục nhận phòng, hỏi giờ ăn sáng, giờ trả phòng và wifi",
+    with: [],
+    words: [
+      ["reservation", "ˌrɛzɚˈveɪʃən", "n", "sự đặt chỗ, đặt phòng trước"],
+      ["passport", "ˈpæspɔrt", "n", "hộ chiếu"],
+      ["key card", "ˈki kɑrd", "n", "thẻ từ mở cửa phòng"],
+      ["breakfast", "ˈbrɛkfəst", "n", "bữa sáng"],
+      ["check out", "tʃɛk aʊt", "phrv", "trả phòng"],
+    ],
+    frames: [
+      {
+        en: "I have a reservation under the name …",
+        vi: "Tôi đã đặt phòng dưới tên …",
+        structure: "I have a reservation + under the name + họ tên",
+        usage: "Dùng khi nhận phòng khách sạn hoặc đến nhà hàng đã đặt trước. Nói họ tên đầy đủ, sẵn sàng đánh vần nếu lễ tân hỏi lại.",
+      },
+      {
+        en: "Here is my …",
+        vi: "Đây là … của tôi",
+        structure: "Here is + my + giấy tờ / đồ vật (số ít)",
+        usage: "Dùng khi đưa giấy tờ cho người khác. Với danh từ số nhiều dùng “Here are my …”.",
+      },
+      {
+        en: "What time is …?",
+        vi: "… lúc mấy giờ?",
+        structure: "What time is + sự việc (breakfast, the meeting…)?",
+        usage: "Hỏi giờ của một hoạt động cố định. Trả lời thường là “It's at + giờ” hoặc “It's from … to …”.",
+      },
+      {
+        en: "Could you tell me …?",
+        vi: "Anh/chị có thể cho tôi biết … không?",
+        structure: "Could you tell me + thông tin cần hỏi (the wifi password, the way to…)?",
+        usage: "Cách hỏi thông tin lịch sự hơn “What is …?”. Dùng với nhân viên phục vụ, người lạ hoặc đối tác.",
+      },
+    ],
+    dialogue: [
+      "Good evening. Welcome to the Grand Hotel. How can I help you?",
+      "Good evening. I have a reservation under the name Nguyen Lan.",
+      "Thank you, Ms Nguyen. Can I see your passport, please?",
+      "Sure. Here is my passport.",
+      "Thank you. You are in room 805, and this is your key card.",
+      "Thanks. What time is breakfast?",
+      "Breakfast is from six to ten on the second floor.",
+      "Great. Could you tell me the check out time and the wifi password?",
+    ],
+    roleplay: [
+      "a hotel receptionist abroad",
+      "Nhận phòng, đưa hộ chiếu, hỏi giờ ăn sáng, giờ trả phòng và wifi",
+      "Good evening. Welcome! Do you have a booking with us?",
+    ],
+  },
+  {
+    title: "Meet your foreign host on a business trip",
+    situation: "Gặp đối tác nước ngoài lần đầu khi đi công tác và trò chuyện trên đường về khách sạn",
+    skill: "reflex",
+    focus: "Chào hỏi, cảm ơn và trò chuyện xã giao",
+    goal: "Chào đối tác, cảm ơn sự đón tiếp, kể về chuyến đi và hỏi lịch làm việc",
+    with: [],
+    words: [
+      ["flight", "flaɪt", "n", "chuyến bay"],
+      ["airport", "ˈɛrpɔrt", "n", "sân bay"],
+      ["jet lag", "ˈdʒɛt læɡ", "n", "mệt mỏi do lệch múi giờ"],
+      ["traffic", "ˈtræfɪk", "n", "giao thông, xe cộ trên đường"],
+      ["schedule", "ˈskɛdʒul", "n", "lịch trình, lịch làm việc"],
+    ],
+    frames: [
+      {
+        en: "Thank you for …",
+        vi: "Cảm ơn anh/chị vì …",
+        structure: "Thank you for + V-ing / danh từ",
+        usage: "Cảm ơn một việc cụ thể người kia đã làm. Sau “for” dùng V-ing: “Thank you for meeting me.”",
+      },
+      {
+        en: "This is my first time in …",
+        vi: "Đây là lần đầu tiên tôi đến …",
+        structure: "This is my first time + in + địa điểm",
+        usage: "Trả lời khi được hỏi đã đến đây chưa; mở ra câu chuyện xã giao. Với hoạt động: “This is my first time + V-ing”.",
+      },
+      {
+        en: "I'm looking forward to …",
+        vi: "Tôi rất mong chờ …",
+        structure: "I'm looking forward to + danh từ / V-ing",
+        usage: "Thể hiện sự hào hứng một cách lịch sự. Sau “to” là danh từ hoặc V-ing, không dùng động từ nguyên mẫu.",
+      },
+      {
+        en: "Could we go over …?",
+        vi: "Chúng ta có thể xem qua … được không?",
+        structure: "Could we go over + nội dung (the schedule, the plan…)?",
+        usage: "Đề nghị cùng xem lại lịch, kế hoạch hoặc tài liệu một cách nhẹ nhàng, lịch sự.",
+      },
+    ],
+    dialogue: [
+      "Welcome to Singapore! How was your flight?",
+      "It was fine, thanks. Thank you for meeting me at the airport.",
+      "My pleasure. Is this your first visit here?",
+      "Yes, this is my first time in Singapore.",
+      "Great. Do you have jet lag?",
+      "Just a little. I'm looking forward to our meeting tomorrow.",
+      "Me too. The traffic is light, so we will be at your hotel soon.",
+      "Wonderful. Could we go over the schedule for tomorrow?",
+    ],
+    roleplay: [
+      "your foreign host picking you up",
+      "Chào hỏi, cảm ơn, kể về chuyến bay và hỏi lịch làm việc ngày mai",
+      "Hello! You must be from Vietnam. Welcome!",
+    ],
+  },
+];
+
+/** Learners preparing for job interviews: replaces days 26–27. */
+export const INTERVIEW_DAYS: CurriculumDay[] = [
+  {
+    title: "Introduce yourself in a job interview",
+    situation: "Giới thiệu bản thân và kinh nghiệm làm {job_vi} trong buổi phỏng vấn",
+    skill: "fluency",
+    focus: "Giới thiệu bản thân có cấu trúc",
+    goal: "Giới thiệu kinh nghiệm, trách nhiệm, điểm mạnh và một thành tích trong 1 phút",
+    with: [],
+    words: [
+      ["experience", "ɪkˈspɪriəns", "n", "kinh nghiệm"],
+      ["responsible for", "rɪˈspɑnsəbəl fɔr", "phr", "chịu trách nhiệm về"],
+      ["strength", "strɛŋθ", "n", "điểm mạnh"],
+      ["team player", "ˈtim ˌpleɪɚ", "n", "người làm việc nhóm tốt"],
+      ["achieve", "əˈtʃiv", "v", "đạt được"],
+    ],
+    frames: [
+      {
+        en: "I have … years of experience as …",
+        vi: "Tôi có … năm kinh nghiệm làm …",
+        structure: "I have + số năm + years of experience as + a/an + vị trí",
+        usage: "Câu mở đầu chuẩn khi giới thiệu kinh nghiệm. Nhớ có “a/an” trước tên vị trí: “as a sales executive”.",
+      },
+      {
+        en: "I was responsible for …",
+        vi: "Tôi đã chịu trách nhiệm về …",
+        structure: "I was responsible for + danh từ / V-ing",
+        usage: "Kể nhiệm vụ chính ở công việc trước. Sau “for” dùng danh từ hoặc V-ing: “for managing reports”.",
+      },
+      {
+        en: "My main strength is …",
+        vi: "Điểm mạnh chính của tôi là …",
+        structure: "My main strength is + danh từ / that + mệnh đề",
+        usage: "Trả lời câu hỏi về điểm mạnh. Nên nêu một điểm, sau đó thêm ví dụ ngắn để chứng minh.",
+      },
+      {
+        en: "I'm proud that …",
+        vi: "Tôi tự hào rằng …",
+        structure: "I'm proud that + mệnh đề (S + V quá khứ)",
+        usage: "Kể một thành tích cụ thể có kết quả rõ ràng. Thường dùng thì quá khứ: “I'm proud that I helped…”.",
+      },
+    ],
+    dialogue: [
+      "Thank you for coming. Please tell me about yourself.",
+      "Thank you. I have three years of experience as {a_job}.",
+      "Great. What were you responsible for in your last job?",
+      "I was responsible for daily tasks and weekly reports.",
+      "I see. And what is your main strength?",
+      "My main strength is that I am a team player.",
+      "Can you give me an example from your work?",
+      "Yes. I'm proud that I helped my team achieve our goals last year.",
+    ],
+    roleplay: [
+      "an interviewer from an international company",
+      "Giới thiệu kinh nghiệm, trách nhiệm, điểm mạnh và một thành tích",
+      "Good morning. Let's start. Can you introduce yourself?",
+    ],
+  },
+  {
+    title: "Answer common interview questions",
+    situation: "Trả lời các câu hỏi phỏng vấn thường gặp cho vị trí {job_vi}",
+    skill: "structure",
+    focus: "Trả lời có lý do và ví dụ cụ thể",
+    goal: "Trả lời câu hỏi về lý do ứng tuyển, một khó khăn đã vượt qua và mục tiêu 5 năm",
+    with: [],
+    words: [
+      ["position", "pəˈzɪʃən", "n", "vị trí công việc"],
+      ["challenge", "ˈtʃælɪndʒ", "n", "thử thách, khó khăn"],
+      ["solve", "sɑlv", "v", "giải quyết"],
+      ["goal", "ɡoʊl", "n", "mục tiêu"],
+      ["improve", "ɪmˈpruv", "v", "cải thiện, nâng cao"],
+    ],
+    frames: [
+      {
+        en: "I applied for this job because …",
+        vi: "Tôi ứng tuyển công việc này vì …",
+        structure: "I applied for this job + because + mệnh đề (S + V)",
+        usage: "Trả lời “Why do you want this job?”. Nêu lý do liên quan đến công ty hoặc sự phát triển của bạn, tránh chỉ nói về lương.",
+      },
+      {
+        en: "For example, …",
+        vi: "Ví dụ, …",
+        structure: "For example, + câu hoàn chỉnh",
+        usage: "Đưa ví dụ cụ thể ngay sau một ý chung để câu trả lời thuyết phục hơn.",
+      },
+      {
+        en: "In the end, …",
+        vi: "Cuối cùng thì …",
+        structure: "In the end, + kết quả (S + V quá khứ)",
+        usage: "Kết thúc câu chuyện bằng kết quả tốt. Dùng khi kể một tình huống khó đã được giải quyết.",
+      },
+      {
+        en: "In five years, I hope to …",
+        vi: "Trong 5 năm tới, tôi hy vọng sẽ …",
+        structure: "In five years, + I hope to + động từ nguyên mẫu",
+        usage: "Trả lời câu hỏi về mục tiêu tương lai. Sau “hope to” dùng động từ nguyên mẫu: “hope to lead a team”.",
+      },
+    ],
+    dialogue: [
+      "Why did you apply for this position?",
+      "I applied for this job because I want to work in an international team.",
+      "Tell me about a challenge at work.",
+      "A client was unhappy. For example, his order was late three times.",
+      "What did you do to solve it?",
+      "I called him every day to update him. In the end, he signed a new contract.",
+      "Very good. What is your goal for the future?",
+      "In five years, I hope to improve my skills and lead a small team.",
+    ],
+    roleplay: [
+      "an interviewer asking common questions",
+      "Trả lời 3 câu hỏi phỏng vấn, mỗi câu có lý do hoặc ví dụ",
+      "Thanks. Now, why do you want this job?",
+    ],
+  },
+];

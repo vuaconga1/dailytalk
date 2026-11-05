@@ -1,200 +1,110 @@
-# WeWIN Daily Speaking — mã nguồn MVP
+# WeWIN Daily Speaking
 
-Phiên bản 0.1, ngày 30/10/2026. Bộ mã nguồn chạy độc lập để WeWIN/IT thử nghiệm và phát triển tiếp; chưa phải bản vận hành thương mại hoàn chỉnh.
+15 phút tiếng Anh mỗi ngày: từ vựng & mẫu câu → nghe & shadowing → hội thoại 3 phút với AI Coach → tổng kết.
 
-## Chạy ngay, không cần API key
+Stack: Next.js 15 (App Router) · TypeScript · Tailwind CSS v4 · Prisma 7 + Neon Postgres · OpenAI (tuỳ chọn).
 
-Yêu cầu Python 3.11+ có dữ liệu múi giờ hệ thống (zoneinfo); khuyến nghị Python 3.12. Nếu Windows thiếu múi giờ, cài `python -m pip install tzdata`. Không có dependency JavaScript; không cần npm install.
+## Chạy local
+
+Yêu cầu Node.js 20+ và một database Neon (https://console.neon.tech).
 
 ```bash
-cd wewin-daily-speaking
-python3 server.py
+npm install
+cp .env.example .env        # điền DATABASE_URL, SESSION_SECRET
+npm run db:push             # tạo bảng trên Neon
+npm run seed:demo           # tạo học viên mẫu (tuỳ chọn)
+npm run dev
 ```
 
-Windows: dùng `python server.py` thay `python3 server.py`.
+Mở http://localhost:3000. Bấm **Trải nghiệm demo không cần đăng ký** để có hồ sơ thử riêng, hoặc tạo tài khoản bằng email/mật khẩu.
 
-Mở http://localhost:8000. Bấm **Trải nghiệm demo không cần đăng ký** để có hồ sơ thử riêng, hoặc tạo tài khoản bằng email/mật khẩu. Sau đó làm khảo sát và đi hết bài học.
+## Chế độ AI
 
-Demo là chế độ mặc định:
+`AI_MODE="demo"` (mặc định) không gửi yêu cầu nào đến dịch vụ AI và không phát sinh phí:
 - Kế hoạch chọn bài theo quy tắc, không giả là AI đã lập kế hoạch.
-- Audio dùng giọng English có sẵn của trình duyệt; chất lượng và khả dụng tùy thiết bị.
-- Hội thoại theo kịch bản minh họa bằng nhập chữ; phản hồi được gắn nhãn demo.
-- Không gửi yêu cầu đến dịch vụ AI, Zalo hay email; không phát sinh phí API.
+- Audio dùng giọng English có sẵn của trình duyệt.
+- Hội thoại theo kịch bản minh hoạ; nút Ghi âm dùng nhận dạng giọng nói của trình duyệt (Chrome/Edge).
 
-## Tài khoản mẫu để demo sản phẩm
+`AI_MODE="openai"` cần `OPENAI_API_KEY` và đủ ba model `OPENAI_TEXT_MODEL`, `OPENAI_TRANSCRIBE_MODEL`, `OPENAI_TTS_MODEL`. Mỗi lần gọi AI được ghi trước vào bảng `Usage`, giới hạn bởi `MAX_PROVIDER_CALLS_PER_USER_DAY` (mặc định 90) và tối đa 3 lần tạo kế hoạch mỗi ngày. Audio TTS được lưu vào bảng `AudioClip` và dùng chung.
 
-```bash
-python seed_demo.py
-```
+## Tài khoản mẫu
 
-Tạo (hoặc làm mới) học viên **Nguyễn Minh Anh**, chuyên viên kinh doanh ngành logistics, lĩnh vực Công việc văn phòng:
-- Email `minhanh.nguyen@wewin.edu.vn`, mật khẩu `WeWIN2026` (đổi bằng `--email` / `--password`).
-- Lộ trình 30 buổi cá nhân hóa; 12 buổi đã hoàn thành với hội thoại và tổng kết đầy đủ; chuỗi 9 ngày liên tiếp.
-- Buổi 13 ("Give a progress update") để trống, sẵn sàng trình diễn trực tiếp trong buổi demo.
+`npm run seed:demo` tạo (hoặc làm mới) học viên **Nguyễn Minh Anh**, chuyên viên kinh doanh ngành logistics:
+- `minhanh.nguyen@wewin.edu.vn` / `WeWIN2026` và `demo@wewin.edu.vn` / `123` (cùng dữ liệu).
+- Lộ trình 30 buổi; 12 buổi đã hoàn thành kèm hội thoại và tổng kết; chuỗi 9 ngày liên tiếp.
+- Buổi 13 ("Give a progress update") để trống, sẵn sàng trình diễn trực tiếp.
 
-Ngày học tính lùi từ hôm nay, nên chạy lại lệnh trước mỗi buổi demo để làm mới dữ liệu. Trong chế độ demo, nút Ghi âm ở phần hội thoại dùng nhận dạng giọng nói của trình duyệt (Chrome/Edge).
+Ngày học tính lùi từ hôm nay, nên chạy lại lệnh trước mỗi buổi demo. Tạo tài khoản riêng: `npm run seed:demo -- --email x@y.z --password secret123`.
 
-## Deploy lên dailytalk.wewin.edu.vn
+## Vận hành: kích hoạt, nhắc học, theo dõi
 
-Trỏ bản ghi DNS `A` của `dailytalk.wewin.edu.vn` về IP máy chủ và mở cổng 80/443.
+Luồng học viên: đăng ký → điền hồ sơ học tập → xác nhận hồ sơ → xem phân loại và lộ trình tham khảo 30 ngày → **học thử 1 buổi** (trạng thái `LEAD`) → chuyên viên tư vấn, nhận thanh toán ngoài hệ thống và bấm **Kích hoạt** trong `/admin` → học 30 ngày (`ACTIVE`, hết hạn tự chuyển `EXPIRED`).
 
-**Cách 1 – Docker + Caddy (tự cấp HTTPS):**
+Vai trò (`User.role`): `LEARNER`, `CONSULTANT` (kích hoạt, chăm sóc), `ACADEMIC` (ngân hàng bài, audio), `ADMIN` (toàn quyền, tạo nhân sự). Tạo admin đầu tiên:
 
 ```bash
-cp .env.production.example .env      # chỉnh AI_MODE / API key nếu cần
-docker compose up -d --build
-docker compose exec app python seed_demo.py   # tạo tài khoản demo
+ADMIN_EMAIL=admin@wewin.edu.vn ADMIN_PASSWORD=... npm run seed:admin
 ```
 
-Dữ liệu nằm trong volume `app-data`, chứng chỉ trong `caddy-data`.
+**Hồ sơ học tập.** Form 8 trường: ngành nghề (+ khác), vị trí công việc theo ngành (+ khác), đối tượng giao tiếp, mục tiêu (chọn nhiều), trình độ tự đánh giá, tần suất dùng tiếng Anh. Danh sách lựa chọn nằm ở `src/lib/profile-options.ts`: 30 ngành và vị trí theo danh sách chính thức của WeWIN; đối tượng giao tiếp, mục tiêu, trình độ, tần suất **vẫn là danh sách tạm**. Không có bài đánh giá đầu vào: `src/lib/classify.ts` xác định trình độ (trình độ tự chọn, hạ 1 bậc nếu hầu như không dùng tiếng Anh) và 3 kỹ năng ưu tiên kèm giải thích tiếng Việt. Học viên có hồ sơ kiểu cũ được chuyển về form; điền lại sẽ xoá các buổi đã học.
 
-**Cách 2 – systemd + Nginx:**
+**Giáo trình 30 ngày soạn sẵn.** `src/lib/curriculum/` chứa lộ trình của 14 nhóm nghề có cách giao tiếp giống nhau (`clusters/*.ts`, mỗi nhóm 30 bài đầy đủ: tình huống, từ vựng, mẫu câu, hội thoại shadowing, role-play). `members.ts` gán từng vị trí trong 30 ngành vào một nhóm, kèm chức danh tiếng Anh và vài từ thay thế (ví dụ `{doc}` = "the tax return" cho kế toán thuế). Mẫu câu dùng chung; chỗ trống `{person}`, `{job}`, `{doc}`… được điền theo vị trí và **đối tượng giao tiếp** học viên chọn (khách hàng / đối tác / cấp trên / đồng nghiệp đổi người đối thoại trong bài). Chọn "Nhà tuyển dụng" thì ngày 26–27 thành chuyên đề phỏng vấn; chọn "đi công tác / du lịch" thì ngày 19–20 thành chuyên đề công tác (`modules.ts`). Sau khi sửa nội dung, chạy `npm run check:curriculum` để kiểm tra cấu trúc, chỗ trống chưa điền và độ phủ vị trí.
 
-```bash
-sudo useradd --system wewin
-sudo cp -r . /opt/wewin-daily-speaking && cd /opt/wewin-daily-speaking
-sudo cp .env.production.example .env
-sudo mkdir -p /var/lib/wewin-dailytalk && sudo chown -R wewin /var/lib/wewin-dailytalk /opt/wewin-daily-speaking
-sudo cp deploy/wewin-dailytalk.service /etc/systemd/system/ && sudo systemctl enable --now wewin-dailytalk
-sudo certbot certonly --nginx -d dailytalk.wewin.edu.vn
-sudo cp deploy/nginx/dailytalk.wewin.edu.vn.conf /etc/nginx/sites-available/
-sudo ln -s /etc/nginx/sites-available/dailytalk.wewin.edu.vn.conf /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-sudo -u wewin python3 seed_demo.py
+**Cấu trúc một bài.** Mỗi ngày có đúng 5 từ mới (IPA giọng Mỹ, loại từ, nghĩa; không lặp lại trong cùng nhóm nghề) và đúng 4 mẫu câu (nghĩa, cấu trúc, cách dùng). Hội thoại shadowing có 8 câu; 4 câu của người học dùng đủ 4 mẫu câu và cả 5 từ. Trong hội thoại AI, danh sách 4 mẫu câu tự đánh dấu khi học viên đã nói; AI dẫn dắt để học viên dùng các mẫu còn thiếu, và tổng kết lưu `frames_used`. Cách nhận diện mẫu câu dùng chung ở `src/lib/frames.ts`. Bước Tổng kết và trang Nhật ký có **tổng kết tuần** (buổi 1–7, 8–14, …, 29–30: số buổi, từ vựng, mẫu câu đã dùng, lỗi lặp lại, gợi ý ôn tập), tính trong `src/lib/week.ts`.
+
+**Lộ trình động.** Khi xác nhận hồ sơ, lộ trình 30 ngày được ghép từ giáo trình (không gọi AI); mỗi ngày lưu `ref` tới bài gốc. Khi học viên mở buổi học, hệ thống chọn giữa bài của ngày đó và bài chưa đạt gần đây (demo: quy tắc, chưa đạt → học lại 1 lần; OpenAI: AI chọn và viết trọng tâm theo lỗi thường gặp, độ khó ±1 bậc), rồi dựng bài cho học viên và lưu vào ngân hàng `LessonContent` để dùng chung. Giáo trình viết ở mức Sơ cấp; khi bật AI và trình độ làm việc khác Sơ cấp, AI viết lại bài cho trình độ đó (giữ tình huống và cấu trúc mẫu câu) và cũng lưu vào ngân hàng. Mỗi tổng kết có `level_signal` (dưới / đúng / trên trình độ); trình độ làm việc (`profile.working_level`) đổi sau 2 tín hiệu cùng chiều liên tiếp (buổi 1 chỉ cần 1). `Attempt.selectedBy`, `plannedTitle`, `focus`, `lessonKey` lưu lý do để chuyên viên xem.
+
+**Cron.** Vercel Hobby chỉ chạy cron 1 lần/ngày, nên dùng cron ngoài (cron-job.org hoặc Upstash QStash) gọi mỗi 5–10 phút:
+
+```
+GET https://<APP_URL>/api/cron/tick
+Authorization: Bearer <CRON_SECRET>
 ```
 
-`APP_ORIGIN=https://dailytalk.wewin.edu.vn` bắt buộc: server chỉ chấp nhận đúng Host/Origin này và tự bật cookie Secure.
+Mỗi lần chạy: chuyển tài khoản hết hạn sang `EXPIRED`; chuẩn bị bài trong vòng 60 phút trước giờ học; gửi nhắc Zalo từ 10 phút trước giờ học (mỗi học viên tối đa 1 tin/ngày, ghi ở bảng `Notification`); tạo tổng kết tuần trước (`WeeklyReport`, đánh dấu học viên cần hỗ trợ). Có thể chạy một phần: `?jobs=study`, `?jobs=weekly&week=2026-10-26`.
 
-## Tính năng đã có
+**Zalo OA.** Dùng tin tư vấn (miễn phí) của OA API v3. Học viên quan tâm OA, vào **Cài đặt → Nhắc học qua Zalo** tạo mã `WWxxxxxx` và gửi mã vào khung chat OA; webhook `POST /api/zalo/webhook` (cấu hình trên developers.zalo.me, sự kiện `follow`, `unfollow`, `user_send_text`) liên kết tài khoản. Zalo chỉ cho gửi tin tư vấn trong một khoảng thời gian sau lần tương tác cuối (`ZALO_CS_WINDOW_HOURS`, mặc định 48 giờ), nên tin nhắc mời học viên trả lời "OK"; ngoài cửa sổ, tin được ghi `SKIPPED` kèm lý do. Chưa có biến `ZALO_*` thì mọi tin chỉ được ghi log (chạy thử).
 
-1. Đăng ký/đăng nhập; mật khẩu PBKDF2; cookie HttpOnly, SameSite; CSRF; kiểm tra quyền sở hữu dữ liệu.
-2. Khảo sát nghề/vai trò, mục tiêu, khó khăn, lĩnh vực và giờ học theo giờ Việt Nam.
-3. 8 câu kiểm tra ngữ pháp/đọc hiểu, chấm tại máy chủ, chia hai mức hỗ trợ ban đầu. Chưa đo nghe/phát âm và không chứng nhận CEFR.
-4. Kế hoạch 30 buổi. Trong chế độ thật, AI chọn và sắp xếp bài theo hồ sơ từ danh mục được phép; kiểm tra đầu ra JSON, mã bài và đủ 30 ngày.
-5. Ngân hàng 18 bài mẫu: 6 bài nền tảng + 4 bài/lĩnh vực (đời sống, văn phòng, du lịch). Lộ trình 30 buổi có các buổi ôn lại, không phải 30 bài hoàn toàn khác nhau. Nội dung là seed cho IT kiểm thử, cần học thuật duyệt/mở rộng trước pilot.
-6. Từ vựng/ý nghĩa, cấu trúc, mục tiêu giao tiếp, ví dụ và đánh dấu hoàn thành bước.
-7. Shadowing: nghe cả đoạn/từng câu, đổi tốc độ, ghi âm và nghe lại tại thiết bị. Audio thật được tổng hợp một lần rồi lưu dùng chung theo nội dung/mô hình/giọng. Không có file MP3 tạo sẵn trong gói ZIP.
-8. Hội thoại 1–1 theo lượt, tối đa một phiên 300 giây/ngày; tối đa 20 lượt. Máy chủ cấp deadline, không đặt lại khi reload hoặc mở nhiều tab. Giới hạn chạy đến nửa đêm Việt Nam nếu phiên bắt đầu sát ngày mới. Không có tạm dừng.
-9. Chế độ AI thật: ghi âm → gửi nhận dạng → kiểm tra/sửa transcript → gửi câu → AI trả lời bằng chữ → bấm nghe giọng AI. Có nhập chữ thay thế và ghi nhận riêng số lượt từ ghi âm.
-10. Tổng kết có điểm mạnh, điểm cần cải thiện, bước tiếp theo và bằng chứng là câu thực sự đã gửi; lưu nhật ký. Không suy ra điểm phát âm từ transcript.
-11. Lưu tài khoản, hồ sơ, kế hoạch, tiến độ và transcript trong SQLite; phần ghi âm STT được xử lý trong bộ nhớ, không chủ động lưu file thô.
-12. Lưu giờ học, lựa chọn nhắc và công cụ xuất danh sách nhắc dạng dry-run để nối Zalo về sau.
+**Audio R2.** Audio shadowing tạo một lần cho mỗi câu, lưu trên Cloudflare R2 (biến `R2_*`) và trả về bằng redirect tới URL công khai; chưa cấu hình R2 thì lưu trong bảng `AudioClip`. Học thuật xem ngân hàng bài và tạo trước audio cho từng bài ở `/admin/lessons`.
 
-## Bật AI thật
+## Deploy lên Vercel
 
-Sao chép `.env.example` thành `.env`, điền giá trị rồi khởi động lại. Không đưa `.env` vào Git, ZIP hoặc mã frontend.
+1. Import repo vào Vercel (framework Next.js được nhận tự động qua `vercel.json`).
+2. Environment Variables: `DATABASE_URL` (pooled URL của Neon), `SESSION_SECRET` (chuỗi ngẫu nhiên ≥16 ký tự), `AI_MODE` và các biến OpenAI nếu dùng, `APP_URL`, `CRON_SECRET`, các biến `ZALO_*` và `R2_*` (xem `.env.example`).
+3. Chạy `npm run db:push` (và `npm run seed:demo` nếu cần) với `DATABASE_URL` production.
+4. Gắn domain `dailytalk.wewin.edu.vn` trong Vercel → Settings → Domains.
 
-```dotenv
-AI_MODE=openai
-OPENAI_API_KEY=<khóa riêng của môi trường thử nghiệm>
-OPENAI_TEXT_MODEL=<model hỗ trợ Responses và JSON object>
-OPENAI_TRANSCRIBE_MODEL=<model hỗ trợ audio/transcriptions>
-OPENAI_TTS_MODEL=<model hỗ trợ audio/speech MP3>
-OPENAI_VOICE=alloy
+## Cấu trúc
+
+```
+prisma/schema.prisma        User (vai trò, trạng thái gói), Attempt, Practice, Usage, AudioClip, LessonContent,
+                            ZaloLink/ZaloLinkCode/ZaloToken, Notification, WeeklyReport, StaffNote
+src/lib/profile-options.ts  danh sách ngành, vị trí, đối tượng, mục tiêu, trình độ, tần suất (tạm)
+src/lib/profile.ts          kiểm tra form hồ sơ, nhãn hiển thị · src/lib/classify.ts  phân loại trình độ/kỹ năng
+src/lib/curriculum/**       giáo trình 30 ngày của 14 nhóm nghề, gán vị trí → nhóm, ghép lộ trình, dựng bài
+src/lib/content.ts          18 bài mẫu cũ (lộ trình tạo trước khi có giáo trình, dữ liệu demo)
+src/lib/ai.ts               adapter AI (demo / OpenAI): chọn bài theo kết quả, viết lại bài theo trình độ, hội thoại, tổng kết
+src/lib/prompts.ts          prompt cho từng lần gọi AI (soạn bài, coach hội thoại, tổng kết, chọn bài, nhận dạng giọng, giọng đọc)
+src/lib/learning.ts         mở buổi học theo ngày + kích hoạt, khoá phiên khi gọi AI, hạn mức, audio dùng chung
+src/lib/access.ts           vai trò, quyền, học thử / kích hoạt
+src/lib/zalo.ts, notify.ts  Zalo OA (token xoay vòng, gửi tin, webhook) và outbox tin nhắn
+src/lib/jobs.ts             tác vụ cron: chuẩn bị bài, nhắc học, tổng kết tuần, hết hạn gói
+src/lib/r2.ts               upload Cloudflare R2
+src/lib/admin.ts            truy vấn cho trang quản trị, tín hiệu "cần hỗ trợ"
+src/lib/auth.ts             cookie phiên ký HMAC + bcrypt
+src/app/api/**              route handlers (auth, onboard, practice, audio, complete, zalo, cron, admin…)
+src/app/(app)/**            trang Hôm nay, Buổi học, Lộ trình, Nhật ký, Cài đặt, Hồ sơ học tập
+src/app/admin/**            Tổng quan, Học viên, Ngân hàng bài, Tin nhắn Zalo, Nhân sự
+src/components/lesson/**    trình học 4 bước (ghi âm, nhận dạng giọng nói, đồng hồ phiên)
+scripts/seed-demo.ts        dữ liệu học viên mẫu · scripts/seed-admin.ts  admin đầu tiên
 ```
 
-Tên mô hình để trống có chủ đích: IT cần kiểm tra mô hình/tính khả dụng/giọng và lịch ngừng hỗ trợ trên tài khoản của WeWIN. Adapter HTTP hiện dùng:
-- `POST https://api.openai.com/v1/responses`
-- `POST https://api.openai.com/v1/audio/transcriptions`
-- `POST https://api.openai.com/v1/audio/speech`
+## Tính năng
 
-Tài liệu: https://developers.openai.com/api/docs/guides/audio và https://developers.openai.com/api/docs/pricing.
-
-Không có API key được cấp trong phiên tạo mã nguồn; do đó chưa kiểm thử cuộc gọi trả phí hoặc xác nhận chất lượng/độ trễ giọng nói thật. Adapter cần một smoke test với model cụ thể trước khi mở cho học viên. Lỗi provider hiện trả thông báo để thử lại, không tự thay bằng phản hồi demo như thể đó là AI thật.
-
-### Chuẩn bị audio trước giờ học
-
-```bash
-# Chỉ kiểm tra số audio còn thiếu, chưa phát sinh phí
-python3 prepare_audio.py --lesson L01
-# Chạy tổng hợp cho một bài bằng API đã cấu hình
-python3 prepare_audio.py --lesson L01 --confirm-costs
-```
-
-Bỏ `--lesson` để tạo cho toàn bộ ngân hàng. Script phải chạy khi không có job tạo audio đồng thời; dùng để chuẩn bị offline, chưa phải hàng đợi sản xuất. Thay model/voice/nội dung sẽ tạo cache khác.
-
-### Giới hạn và đo usage
-
-- 5 phút là thời gian phiên từ lúc sẵn sàng đến kết thúc, gồm thời gian chờ và gõ; không phải 5 phút âm thanh thuần. Kết thúc sớm không được tạo lại phiên trong ngày.
-- Không tạo cuộc gọi hội thoại/nhận dạng/giọng trả lời mới sau deadline. Cuộc gọi đã bắt đầu hợp lệ trước deadline có thể hoàn thành sau đó; UI dừng phát audio khi hết giờ.
-- Tối đa 20 lượt phản hồi, mỗi câu tối đa 1.000 ký tự; mỗi upload tối đa 4 MB; UI tự dừng ghi âm sau 45 giây. Backend chưa phân tích thời lượng file, nên cần bổ sung kiểm tra media duration khi triển khai thật.
-- `MAX_PROVIDER_CALLS_PER_USER_DAY` mặc định 90, gồm cả request thất bại; thử tạo kế hoạch tối đa 3 lần/ngày. Dữ liệu usage có reservation và token trả về từ model text, byte STT/character TTS; đây chưa phải sổ chi phí USD hoàn chỉnh.
-- Cần thêm ngân sách toàn hệ thống, giới hạn bằng tiền, đối soát billing và cảnh báo. Cấu hình spend limit ở tài khoản nhà cung cấp.
-
-## Lưu trữ và cấu hình máy chủ
-
-Mặc định dữ liệu ở `data/wewin.sqlite3`, audio ở `data/audio/`. Bảo toàn thư mục này giữa các lần deploy; không đưa dữ liệu học viên vào mã nguồn.
-
-Các biến môi trường khác:
-
-| Biến | Mặc định | Ý nghĩa |
-|---|---|---|
-| HOST | 127.0.0.1 | Địa chỉ bind |
-| PORT | 8000 | Cổng chạy |
-| APP_ORIGIN | http://localhost:8000 | Origin chính xác, gồm scheme/host/port |
-| DATA_DIR | data cạnh server.py | Đường dẫn lưu bền vững |
-| MAX_PROVIDER_CALLS_PER_USER_DAY | 90 | Hạn mức request API mỗi người/ngày |
-
-Nếu chạy tên miền khác phải đặt APP_ORIGIN đúng. HTTPS origin tự bật cờ Secure cho cookie. Ghi âm browser yêu cầu HTTPS hoặc localhost; kiểm tra Safari/Chrome và trình duyệt trong Zalo, hướng dẫn mở ngoài nếu không hỗ trợ.
-
-MVP dùng `ThreadingHTTPServer` của Python, phục vụ frontend và API cùng origin. Không dùng trực tiếp như một nền tảng production công khai. Mô hình khóa hiện tại dành cho một tiến trình. Khi chuyển sang nhiều worker/container cần khóa giao dịch/hàng đợi phân tán, request idempotency bền vững, database và storage phù hợp.
-
-## Nhắc học/Zalo
-
-```bash
-python3 reminders.py --at 2026-10-30T20:30:00+07:00
-```
-
-Chỉ xuất JSON học viên chọn nhắc đúng phút và chưa hoàn thành bài ngày đó. Script không gửi tin, không ghi đã gửi, không tự chạy định kỳ. Vì chưa có thanh toán, nó cũng chưa kiểm tra quyền lợi trả phí.
-
-Để dùng thật, IT bổ sung worker/scheduler, liên kết đúng định danh OA–tài khoản, xác nhận loại tin/mẫu và điều kiện gửi, kiểm tra đồng ý/quyền học ngay trước gửi, transaction chống trùng, retry có giới hạn và nhật ký provider. Không đưa khóa Zalo lên trình duyệt. Không xem bước chọn giờ là chứng cứ đã gửi thành công.
-
-## Cấu trúc source
-
-```text
-server.py          HTTP API, auth, SQLite, session quota, audio cache
-ai.py              Adapter Responses / STT / TTS; demo riêng biệt
-content.py         Câu hỏi đầu vào, chấm điểm, ngân hàng bài
-prepare_audio.py   Chuẩn bị audio dùng chung bằng API
-reminders.py       Xuất nhắc học dry-run
-web/index.html     Trang ứng dụng
-web/style.css      Giao diện responsive xanh navy, teal, vàng
-web/app.js         Khảo sát, lộ trình, bài học, audio, ghi âm, chat, tổng kết
-tests/test_app.py  Kiểm tra tích hợp không gọi API trả phí
-.env.example       Cấu hình mẫu, không có secret
-```
-
-## API chính
-
-GET `/api/config`, `/api/me`, `/api/today`, `/api/history`, `/api/audio?lesson=L01&line=all`.
-
-POST `/api/register`, `/api/login`, `/api/logout`, `/api/onboard`, `/api/settings`, `/api/checkpoint`, `/api/practice/start`, `/api/transcribe`, `/api/practice/turn`, `/api/reply-audio`, `/api/complete`.
-
-`/api/demo` chỉ hoạt động trong AI_MODE=demo, tạo tài khoản giả không có quyền truy cập dữ liệu khác. Không có endpoint bỏ qua đăng nhập trong chế độ openai.
-
-API đã đăng nhập yêu cầu cookie; mọi POST sau auth cần X-CSRF-Token từ `/api/me`. API không bật CORS. Object ID không thay thế kiểm tra quyền; máy chủ luôn lọc theo user_id.
-
-## Kiểm tra
-
-```bash
-python3 -m unittest discover -s tests -v
-node --check web/app.js
-```
-
-Kiểm tra tự động bao phủ: luồng đầy đủ và tổng kết idempotent; chấm đầu vào ở server; ngăn đọc/ghi chéo tài khoản; CSRF/origin; hết hạn không tạo lại phiên; khóa khi lượt trước đang xử lý; điều kiện hoàn thành; mở bài ngày sau; giữ kế hoạch; cache audio; từ chối mã bài AI bịa; cookie HttpOnly/SameSite.
-
-Đã kiểm tra giao diện desktop qua trình duyệt ở chế độ demo: khảo sát → kế hoạch → từ vựng → shadowing → hội thoại bằng nhập chữ → tổng kết. Chưa kiểm thử microphone thật, Safari/iPhone/Android, dịch vụ AI trả phí hoặc gửi Zalo thật. Team cần hoàn thành kiểm thử này trước pilot.
-
-## IT cần hoàn thiện trước vận hành thương mại
-
-- Cổng thanh toán, quyền học hết hạn/bảo lưu; bảng quản trị tư vấn/học thuật.
-- Xác minh email, quên mật khẩu, quản trị tài khoản; chống đăng ký hàng loạt và rate limit toàn hệ thống. Tắt demo trong môi trường thật.
-- Điều khoản/chính sách lưu dữ liệu, thời hạn retention, xóa/export, backup và thử khôi phục. Chưa có luồng trẻ em.
-- Bài nghe và bài nói đầu vào, rubric chuẩn; học thuật duyệt và tăng ngân hàng bài.
-- Cá nhân hóa sâu hơn về từ vựng/độ khó; kế hoạch hiện chọn bài theo hồ sơ ban đầu, chưa tự lập lại sau mỗi ngày. Phản hồi cuối buổi đã có nhưng chưa tự quyết định tăng/hạ cấp.
-- Audio prewarm theo hàng đợi, xử lý provider timeout/retry có giới hạn; đo latency và billing.
-- Xác nhận client hết thời gian trong mọi trạng thái (nhiều tab, reload, nền, lỗi mạng); backend đã chặn cấp lại phiên và request sau deadline.
-- Ghi nhận consent có version/timestamp bền vững; log/audit; mã hóa/sao lưu storage phù hợp.
-- Chuyển backend sang web server/framework production và HTTPS reverse proxy; persistent storage, khóa liên tiến trình và giám sát lỗi.
-
-Đây là source khởi điểm có thể chạy và mở rộng, không phải tuyên bố đã hoàn tất các tích hợp thương mại nói trên.
+1. Đăng ký/đăng nhập (bcrypt, cookie HttpOnly SameSite, chặn POST khác origin), chế độ demo không cần tài khoản.
+2. Hồ sơ học tập nhiều bước có bước xác nhận; kết quả phân loại hiển thị bằng lời (trình độ, kỹ năng ưu tiên và lý do), không chỉ điểm số.
+3. Lộ trình tham khảo 30 tình huống; nội dung chi tiết chỉ tạo khi bắt đầu từng ngày và điều chỉnh theo kết quả thật.
+4. Shadowing: nghe cả đoạn/từng câu, đổi tốc độ, ghi âm và nghe lại ngay trên thiết bị.
+5. Hội thoại một phiên 300 giây/ngày, tối đa 20 lượt; deadline do máy chủ cấp, không đặt lại khi reload hoặc mở nhiều tab.
+6. Tổng kết có điểm mạnh, điểm cần cải thiện, bước tiếp theo và bằng chứng là câu học viên thực sự đã gửi; không suy ra điểm phát âm từ transcript.
+7. Ghi âm gửi nhận dạng chỉ xử lý trong bộ nhớ, không lưu file thô.
