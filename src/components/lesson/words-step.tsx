@@ -2,11 +2,13 @@
 
 import { PARTS_OF_SPEECH, usesFrame } from "@/domain/frames";
 import type { Lesson } from "@/domain/types";
+import type { LessonAudio } from "./lesson-player";
 import { useAction } from "./use-action";
 import type { useMedia } from "./use-media";
 
 type Props = {
   lesson: Lesson;
+  audio: LessonAudio;
   media: ReturnType<typeof useMedia>;
   onNext: () => Promise<void>;
   onError: (message: string) => void;
@@ -14,10 +16,19 @@ type Props = {
 
 type Word = Lesson["vocabulary"][number];
 
-export function WordsStep({ lesson, media, onNext, onError }: Props) {
+export function WordsStep({ lesson, audio, media, onNext, onError }: Props) {
   const { pending, run } = useAction(onError);
   const learnerLines = lesson.dialogue.filter((_, i) => i % 2 === 1);
   const say = (text: string) => run(async () => media.speak(text, 0.9));
+  const clip = (query: string) => `/api/audio?lesson=${encodeURIComponent(lesson.id)}&${query}`;
+  const sayWord = (v: Word) => {
+    const i = lesson.vocabulary.indexOf(v);
+    return audio.words && i >= 0 ? run(() => media.playUrl(clip(`word=${i}`), 0.9)) : say(v.word);
+  };
+  const sayFrame = (frame: string, example: string | undefined) => {
+    const line = example ? lesson.dialogue.indexOf(example) : -1;
+    return audio.lines && line >= 0 ? run(() => media.playUrl(clip(`line=${line}`), 0.9)) : say(example ?? frame.replaceAll("…", ""));
+  };
   const recap = lesson.recap;
   const range = recap?.days.length ? `ngày ${recap.days[0].day}–${recap.days[recap.days.length - 1].day}` : "";
   const otherFrames = recap?.frames.filter((f) => !lesson.frames.includes(f.frame)) ?? [];
@@ -30,7 +41,7 @@ export function WordsStep({ lesson, media, onNext, onError }: Props) {
           type="button"
           className="btn btn-secondary shrink-0 !px-3 !py-1.5 text-xs"
           aria-label={`Nghe phát âm ${v.word}`}
-          onClick={() => say(v.word)}
+          onClick={() => sayWord(v)}
         >
           ▶
         </button>
@@ -110,7 +121,7 @@ export function WordsStep({ lesson, media, onNext, onError }: Props) {
                   type="button"
                   className="btn btn-secondary shrink-0 !px-3 !py-1.5 text-xs"
                   aria-label={`Nghe mẫu câu ${i + 1}`}
-                  onClick={() => say(example ?? f.replaceAll("…", ""))}
+                  onClick={() => sayFrame(f, example)}
                 >
                   ▶
                 </button>

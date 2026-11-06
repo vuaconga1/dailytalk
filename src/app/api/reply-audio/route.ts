@@ -1,5 +1,5 @@
 import { authedRoute, readJson } from "@/server/http/api";
-import { aiConfig } from "@/server/ai/config";
+import { ttsConfig } from "@/server/ai/config";
 import { Problem } from "@/lib/errors";
 import { cachedSpeech, speechResponse } from "@/server/learning/audio";
 import { withPracticeLock } from "@/server/learning/practice";
@@ -12,7 +12,7 @@ export const POST = authedRoute(async (req, user) => {
     const turns = practice.turns as Turn[];
     const last = turns.at(-1);
     if (last?.role !== "assistant") throw new Problem("Chưa có câu trả lời.");
-    const key = sha256(JSON.stringify([practice.id, turns.length, aiConfig.tts, aiConfig.voice]));
+    const key = sha256(JSON.stringify([practice.id, turns.length, ttsConfig.model, ttsConfig.voice]));
     return cachedSpeech({ key, text: last.text, userId: user.id, kind: "reply_audio" });
   });
   return speechResponse(result);

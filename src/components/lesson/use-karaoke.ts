@@ -14,13 +14,14 @@ import type { useMedia } from "./use-media";
 export interface UseKaraokeProps {
   lessonId: string;
   lines: string[];
-  demo: boolean;
+  /** Every line has a cached MP3 clip; otherwise the browser voice reads it. */
+  serverAudio: boolean;
   rate: number;
   media: ReturnType<typeof useMedia>;
   onError?: (message: string) => void;
 }
 
-export function useKaraoke({ lessonId, lines, demo, rate, media, onError }: UseKaraokeProps) {
+export function useKaraoke({ lessonId, lines, serverAudio, rate, media, onError }: UseKaraokeProps) {
   const [lineIndex, setLineIndex] = useState(-1);
   const [wordIndex, setWordIndex] = useState(-1);
   const [playing, setPlaying] = useState(false);
@@ -62,8 +63,8 @@ export function useKaraoke({ lessonId, lines, demo, rate, media, onError }: UseK
       const tokens = tokenize(text);
       if (tokens.length === 0) return true;
 
-      if (demo) {
-        // SpeechSynthesis path (demo mode)
+      if (!serverAudio) {
+        // SpeechSynthesis path (no cached clips)
         const charOffset = fromWordIdx > 0 && fromWordIdx < tokens.length ? tokens[fromWordIdx].start : 0;
         const spokenText = text.slice(charOffset);
         const estimatedSec = estimateSentenceSeconds(spokenText, 150) / Math.max(0.1, rateRef.current);
@@ -107,7 +108,7 @@ export function useKaraoke({ lessonId, lines, demo, rate, media, onError }: UseK
         return true;
       }
 
-      // MP3 audio path (normal mode)
+      // MP3 audio path
       currentTimingsRef.current = [];
       currentAudioRef.current = null;
       onError?.("Đang chuẩn bị audio…");
@@ -161,7 +162,7 @@ export function useKaraoke({ lessonId, lines, demo, rate, media, onError }: UseK
 
       return true;
     },
-    [demo, lessonId, lines, media, onError],
+    [serverAudio, lessonId, lines, media, onError],
   );
 
   const playLine = useCallback(
@@ -224,7 +225,7 @@ export function useKaraoke({ lessonId, lines, demo, rate, media, onError }: UseK
 
       // In MP3 mode, if this line is already playing, seek directly in audio element
       if (
-        !demo &&
+        serverAudio &&
         playing &&
         lineIndex === targetLine &&
         media.audioRef.current &&
@@ -241,7 +242,7 @@ export function useKaraoke({ lessonId, lines, demo, rate, media, onError }: UseK
       // Otherwise launch playLine starting from targetWord
       await playLine(targetLine, targetWord);
     },
-    [demo, lines, lineIndex, playing, media, playLine],
+    [serverAudio, lines, lineIndex, playing, media, playLine],
   );
 
   const prev = useCallback(() => {

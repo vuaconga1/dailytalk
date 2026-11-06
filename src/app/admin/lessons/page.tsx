@@ -1,7 +1,7 @@
 import { ApiForm } from "@/components/admin/api-form";
-import { isDemo } from "@/server/ai/config";
+import { canGenerateSpeech } from "@/server/ai/config";
 import { normalizeLesson } from "@/domain/content";
-import { lessonAudio } from "@/server/learning/audio";
+import { lessonClips } from "@/server/learning/audio";
 import { requireStaff } from "@/server/http/page-guards";
 import { prisma } from "@/server/db";
 import { levelInfo, LEVEL_IDS, type LevelId } from "@/domain/profile-options";
@@ -12,7 +12,7 @@ export default async function LessonsPage() {
   await requireStaff("manageLessons");
   const rows = await prisma.lessonContent.findMany({ orderBy: [{ uses: "desc" }, { lastUsed: "desc" }], take: 200 });
   const lessons = rows.map((r) => ({ row: r, lesson: normalizeLesson(r.lesson) }));
-  const keys = lessons.map(({ lesson }) => [lessonAudio(lesson, "all").key, ...lesson.dialogue.map((_, i) => lessonAudio(lesson, i).key)]);
+  const keys = lessons.map(({ lesson }) => lessonClips(lesson).map((c) => c.key));
   const stored = await prisma.audioClip.findMany({ where: { key: { in: keys.flat() } }, select: { key: true, r2Key: true } });
   const byKey = new Map(stored.map((c) => [c.key, c]));
 
@@ -23,7 +23,7 @@ export default async function LessonsPage() {
       <p className="mb-6 max-w-[900px] text-muted">
         Bài học lấy từ giáo trình soạn sẵn của 14 nhóm nghề (<code>src/data/curriculum</code>), được lưu vào đây khi học viên đầu tiên học
         tới và dùng lại cho học viên có cùng nội dung. Khi bật AI, bài được viết lại cho trình độ khác Sơ cấp và cũng lưu tại đây. Audio
-        shadowing lưu ở <b>{r2Enabled() ? "Cloudflare R2" : "database (chưa cấu hình R2)"}</b>.
+        shadowing và từ vựng (tạo bằng <code>npm run audio:gen</code> hoặc nút bên dưới) lưu ở <b>{r2Enabled() ? "Cloudflare R2" : "database (chưa cấu hình R2)"}</b>.
       </p>
       <article className="card overflow-x-auto !p-0">
         <table className="data-table">
@@ -85,7 +85,7 @@ export default async function LessonsPage() {
                     </span>
                   </td>
                   <td>
-                    {!isDemo && ready < clips.length && (
+                    {canGenerateSpeech && ready < clips.length && (
                       <ApiForm
                         endpoint="/api/admin/audio"
                         extra={{ key: row.key }}

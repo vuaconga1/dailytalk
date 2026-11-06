@@ -28,6 +28,20 @@ function readConfig() {
 export const aiConfig = readConfig();
 export const isDemo = aiConfig.mode === "demo";
 
+/** Text-to-speech: a self-hosted OpenAI-compatible server (Kokoro) when TTS_BASE_URL is set, otherwise OpenAI. */
+export const ttsConfig = {
+  baseUrl: process.env.TTS_BASE_URL?.trim() ?? "",
+  model: process.env.TTS_MODEL?.trim() || aiConfig.tts,
+  voice: process.env.TTS_VOICE?.trim() || aiConfig.voice,
+} as const;
+/**
+ * Without it only already-cached clips are served: production keeps TTS_MODEL/TTS_VOICE (so cache keys match)
+ * but leaves TTS_BASE_URL empty, and an explicit TTS_MODEL is never sent to OpenAI.
+ */
+export const canGenerateSpeech = ttsConfig.baseUrl
+  ? Boolean(ttsConfig.model)
+  : !isDemo && !process.env.TTS_MODEL?.trim();
+
 let client: OpenAI | null = null;
 export function openai(): OpenAI {
   client ??= new OpenAI({
@@ -36,6 +50,13 @@ export function openai(): OpenAI {
     maxRetries: 0,
   });
   return client;
+}
+
+let tts: OpenAI | null = null;
+export function ttsClient(): OpenAI {
+  if (!ttsConfig.baseUrl) return openai();
+  tts ??= new OpenAI({ apiKey: "kokoro", baseURL: ttsConfig.baseUrl, timeout: 120_000, maxRetries: 1 });
+  return tts;
 }
 
 export async function call<T>(run: () => Promise<T>): Promise<T> {

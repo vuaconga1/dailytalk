@@ -2,7 +2,7 @@ import "server-only";
 import { toFile } from "openai";
 import type { Lesson } from "@/domain/types";
 import { AIError } from "@/lib/errors";
-import { aiConfig, call, isDemo, openai } from "./config";
+import { aiConfig, call, canGenerateSpeech, isDemo, openai, ttsClient, ttsConfig } from "./config";
 import { transcribePrompt, VOICE_STYLE } from "./prompts";
 
 /** `lesson` gives the model today's words so they are spelled right (the learner's errors are kept). */
@@ -22,14 +22,14 @@ export async function transcribe(audio: Buffer, mime: string, lesson?: Lesson): 
 }
 
 export async function speech(input: string): Promise<Buffer> {
-  if (isDemo) throw new AIError("Demo dùng giọng đọc có sẵn của trình duyệt.");
+  if (!canGenerateSpeech) throw new AIError("Chưa cấu hình dịch vụ giọng đọc (TTS).");
   const res = await call(() =>
-    openai().audio.speech.create({
-      model: aiConfig.tts,
-      voice: aiConfig.voice,
+    ttsClient().audio.speech.create({
+      model: ttsConfig.model,
+      voice: ttsConfig.voice,
       input,
       // Only the gpt-4o TTS family accepts style instructions; older models reject the field.
-      ...(aiConfig.tts.startsWith("gpt-4o") ? { instructions: VOICE_STYLE } : {}),
+      ...(ttsConfig.model.startsWith("gpt-4o") ? { instructions: VOICE_STYLE } : {}),
       response_format: "mp3",
     }),
   );

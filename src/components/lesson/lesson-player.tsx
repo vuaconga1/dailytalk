@@ -13,13 +13,16 @@ import { WordsStep } from "./words-step";
 const DAILY_SECONDS = 180;
 const STEPS = ["01. Từ & mẫu câu", "02. Shadowing", "03. Hội thoại AI", "04. Tổng kết"];
 
-type Props = { initial: AttemptView; week: WeekReview; serverTime: number; demo: boolean; contextLabel: string };
+/** Which parts of the lesson have cached MP3 clips; the rest use the browser voice. */
+export type LessonAudio = { lines: boolean; words: boolean };
+
+type Props = { initial: AttemptView; week: WeekReview; serverTime: number; demo: boolean; audio: LessonAudio; contextLabel: string };
 
 function clock(seconds: number) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-export function LessonPlayer({ initial, week, serverTime, demo, contextLabel }: Props) {
+export function LessonPlayer({ initial, week, serverTime, demo, audio, contextLabel }: Props) {
   const router = useRouter();
   const media = useMedia();
   const [attempt, setAttempt] = useState(initial);
@@ -161,9 +164,9 @@ export function LessonPlayer({ initial, week, serverTime, demo, contextLabel }: 
 
       {/* Step Workspace Card */}
       <div className="rounded-2xl border border-[#e2e8f4] bg-white p-6 md:p-8 shadow-xs">
-        {step === 0 && <WordsStep lesson={lesson} media={media} onNext={() => checkpoint("words")} onError={notify} />}
+        {step === 0 && <WordsStep lesson={lesson} audio={audio} media={media} onNext={() => checkpoint("words")} onError={notify} />}
         {step === 1 && (
-          <ShadowStep lesson={lesson} demo={demo} media={media} onNext={() => checkpoint("shadow")} onError={notify} />
+          <ShadowStep lesson={lesson} serverAudio={audio.lines} media={media} onNext={() => checkpoint("shadow")} onError={notify} />
         )}
         {step === 2 && (
           <PracticeStep

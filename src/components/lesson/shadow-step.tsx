@@ -10,13 +10,13 @@ import type { useMedia } from "./use-media";
 
 type Props = {
   lesson: Lesson;
-  demo: boolean;
+  serverAudio: boolean;
   media: ReturnType<typeof useMedia>;
   onNext: () => Promise<void>;
   onError: (message: string) => void;
 };
 
-export function ShadowStep({ lesson, demo, media, onNext, onError }: Props) {
+export function ShadowStep({ lesson, serverAudio, media, onNext, onError }: Props) {
   const { pending, run } = useAction(onError);
   const [rate, setRate] = useState(1);
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
@@ -28,7 +28,7 @@ export function ShadowStep({ lesson, demo, media, onNext, onError }: Props) {
   const k = useKaraoke({
     lessonId: lesson.id,
     lines: lesson.dialogue,
-    demo,
+    serverAudio,
     rate,
     media,
     onError,

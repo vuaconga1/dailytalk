@@ -1,11 +1,10 @@
 import { authedRoute } from "@/server/http/api";
-import { isDemo } from "@/server/ai/config";
 import { normalizeLesson } from "@/domain/content";
 import { Problem } from "@/lib/errors";
-import { cachedSpeech, lessonAudio, speechResponse } from "@/server/learning/audio";
+import { cachedSpeech, lessonAudio, speechResponse, wordAudio } from "@/server/learning/audio";
 import { prisma } from "@/server/db";
 
-/** Shared shadowing audio of a lesson the learner has been given: the whole dialogue or one line. */
+/** Shared audio of a lesson the learner has been given: the whole dialogue, one line (`line`) or one word (`word`). */
 export const GET = authedRoute(async (req, user) => {
   const id = req.nextUrl.searchParams.get("lesson") ?? "";
   if (!id || id.length > 100) throw new Problem("Không tìm thấy bài.", 404);
@@ -14,11 +13,11 @@ export const GET = authedRoute(async (req, user) => {
     select: { lesson: true },
   });
   if (!attempt) throw new Problem("Bài không thuộc lộ trình của bạn.", 403);
-  if (isDemo) throw new Problem("Demo dùng giọng đọc trình duyệt.");
   const lesson = normalizeLesson(attempt.lesson);
+  const word = req.nextUrl.searchParams.get("word");
   const line = req.nextUrl.searchParams.get("line") ?? "all";
-  if (line !== "all" && !/^\d+$/.test(line)) throw new Problem("Câu không hợp lệ.");
-  const { text, key } = lessonAudio(lesson, line === "all" ? "all" : Number(line));
+  if (word !== null ? !/^\d+$/.test(word) : line !== "all" && !/^\d+$/.test(line)) throw new Problem("Câu không hợp lệ.");
+  const { text, key } = word !== null ? wordAudio(lesson, Number(word)) : lessonAudio(lesson, line === "all" ? "all" : Number(line));
   if (!text) throw new Problem("Câu không hợp lệ.");
   return speechResponse(await cachedSpeech({ key, text, userId: user.id, kind: "shared_audio", shared: true }));
 });
