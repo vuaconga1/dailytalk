@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { api, errorMessage } from "@/lib/client-api";
+import { api, errorMessage } from "@/client/api";
 
 export type ZaloStatus = {
   configured: boolean;

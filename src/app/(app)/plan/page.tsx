@@ -1,7 +1,9 @@
 import { RoadmapGrid } from "@/components/plan/roadmap-grid";
-import { getHistory, getTodayAttempt } from "@/lib/learning";
-import { requirePlan } from "@/lib/page-guards";
-import { levelInfo } from "@/lib/profile-options";
+import { getHistory } from "@/server/learning/history";
+import { getTodayAttempt } from "@/server/learning/lessons";
+import { OPEN_ALL_DAYS } from "@/server/learning/practice";
+import { requirePlan } from "@/server/http/page-guards";
+import { levelInfo } from "@/domain/profile-options";
 
 export default async function PlanPage() {
   const user = await requirePlan();
@@ -61,7 +63,7 @@ export default async function PlanPage() {
       </div>
 
       {/* 30-Day Grid with Large Typography */}
-      <RoadmapGrid days={user.plan.days} completed={completed} current={attempt.day} actual={actual} />
+      <RoadmapGrid days={user.plan.days} completed={completed} current={attempt.day} actual={actual} openAll={OPEN_ALL_DAYS} />
     </section>
   );
 }

@@ -1,8 +1,9 @@
 import { LessonPlayer } from "@/components/lesson/lesson-player";
-import { isDemo } from "@/lib/ai";
-import { getTodayAttempt, getWeekReview } from "@/lib/learning";
-import { requirePlan } from "@/lib/page-guards";
-import { levelInfo } from "@/lib/profile-options";
+import { isDemo } from "@/server/ai/config";
+import { getWeekReview } from "@/server/learning/history";
+import { getTodayAttempt } from "@/server/learning/lessons";
+import { requirePlan } from "@/server/http/page-guards";
+import { levelInfo } from "@/domain/profile-options";
 
 export default async function LessonPage({ searchParams }: { searchParams: Promise<{ day?: string }> }) {
   const user = await requirePlan();

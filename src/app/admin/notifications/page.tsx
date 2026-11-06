@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { requireStaff } from "@/lib/page-guards";
-import { prisma } from "@/lib/prisma";
+import { requireStaff } from "@/server/http/page-guards";
+import { prisma } from "@/server/db";
 import { formatVnDate } from "@/lib/time";
-import { messagingWindowHours, zaloConfigured } from "@/lib/zalo";
+import { messagingWindowHours, zaloConfigured } from "@/server/integrations/zalo";
 
 const LABELS = { PENDING: "Đang chờ", SENT: "Đã gửi", SKIPPED: "Bỏ qua", FAILED: "Lỗi" } as const;
 

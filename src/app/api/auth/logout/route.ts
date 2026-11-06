@@ -1,5 +1,5 @@
-import { json, route } from "@/lib/api";
-import { destroySession } from "@/lib/auth";
+import { json, route } from "@/server/http/api";
+import { destroySession } from "@/server/auth";
 
 export const POST = route(async () => {
   await destroySession();

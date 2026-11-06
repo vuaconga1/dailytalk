@@ -1,5 +1,5 @@
-import { json, staffRoute } from "@/lib/api";
-import { buildWeeklyReports, expireAccounts, lastWeekStart, runStudyJobs } from "@/lib/jobs";
+import { json, staffRoute } from "@/server/http/api";
+import { buildWeeklyReports, expireAccounts, lastWeekStart, runStudyJobs } from "@/server/jobs";
 
 export const maxDuration = 60;
 

@@ -37,7 +37,7 @@ model User {
   phone        String?
   /// Throwaway "Trải nghiệm demo" learner; email is <id>@demo.invalid.
   isDemo       Boolean       @default(false)
-  /// LearnerProfile (see src/lib/types.ts)
+  /// LearnerProfile (see src/domain/types.ts)
   profile      Json?
   /// Reference 30-day StudyPlan; the actual next lesson is re-chosen from results.
   plan         Json?
@@ -45,6 +45,14 @@ model User {
   packageName  String?
   activatedAt  DateTime?
   accessEndsAt DateTime?
+  /// Hoàn thành ngày 30 + 24 giờ; từ thời điểm này tài khoản bị khóa cho đến khi được kích hoạt lại.
+  lockAt       DateTime?
+  /// Phiên đăng nhập hợp lệ duy nhất; cookie mang phiên khác sẽ bị đăng xuất.
+  sessionId     String?
+  /// IP của phiên hiện tại.
+  sessionIp     String?
+  /// Lần cuối phiên hiện tại hoạt động (cập nhật tối đa mỗi phút).
+  sessionSeenAt DateTime?
   consultantId String?
   consultant   User?         @relation("Consultant", fields: [consultantId], references: [id], onDelete: SetNull)
   createdAt    DateTime      @default(now())
@@ -85,7 +93,7 @@ model Attempt {
   wordsDone       Boolean  @default(false)
   shadowDone      Boolean  @default(false)
   completed       Boolean  @default(false)
-  /// Summary incl. errors / review items (see src/lib/types.ts)
+  /// Summary incl. errors / review items (see src/domain/types.ts)
   summary         Json?
   createdAt       DateTime @default(now())
 
@@ -133,7 +141,7 @@ model LessonContent {
   industry  String
   position  String
   level     String
-  /// Lesson (see src/lib/types.ts)
+  /// Lesson (see src/domain/types.ts)
   lesson    Json
   /// "openai" | "static"
   source    String

@@ -8,14 +8,14 @@
  * the history fresh and today's lesson untouched.
  */
 import bcrypt from "bcryptjs";
-import { classify } from "../src/lib/classify";
-import { LESSONS } from "../src/lib/content";
-import { buildPlan } from "../src/lib/curriculum";
-import { framesUsed } from "../src/lib/frames";
-import type { ProfileInput } from "../src/lib/profile";
-import { prisma } from "../src/lib/prisma";
+import { classify } from "../src/domain/classify";
+import { LESSONS } from "../src/domain/content";
+import { buildPlan } from "../src/domain/curriculum";
+import { framesUsed } from "../src/domain/frames";
+import type { ProfileInput } from "../src/domain/profile";
+import { prisma } from "../src/server/db";
 import { shiftDays, vnDate } from "../src/lib/time";
-import type { LearnerProfile, LevelSignal, StudyPlan, Summary, Turn } from "../src/lib/types";
+import type { LearnerProfile, LevelSignal, StudyPlan, Summary, Turn } from "../src/domain/types";
 
 const NAME = "Nguyễn Minh Anh";
 const ACCOUNTS: [email: string, password: string][] = [

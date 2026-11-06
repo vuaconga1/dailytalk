@@ -1,6 +1,6 @@
-import { authedRoute, json } from "@/lib/api";
-import { prisma } from "@/lib/prisma";
-import { LINK_CODE_TTL_MS, newLinkCode, oaFollowUrl, zaloConfigured } from "@/lib/zalo";
+import { authedRoute, json } from "@/server/http/api";
+import { prisma } from "@/server/db";
+import { LINK_CODE_TTL_MS, newLinkCode, oaFollowUrl, zaloConfigured } from "@/server/integrations/zalo";
 
 async function status(userId: string) {
   const link = await prisma.zaloLink.findUnique({ where: { userId } });

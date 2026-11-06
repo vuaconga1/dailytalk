@@ -1,10 +1,10 @@
 import { randomBytes } from "node:crypto";
-import { clientIp, json, route } from "@/lib/api";
-import { isDemo } from "@/lib/ai";
-import { createSession, DEMO_SESSION_MAX_AGE_SEC, hashPassword } from "@/lib/auth";
+import { clientIp, json, route } from "@/server/http/api";
+import { isDemo } from "@/server/ai/config";
+import { createSession, DEMO_SESSION_MAX_AGE_SEC, hashPassword } from "@/server/auth";
 import { Problem } from "@/lib/errors";
-import { prisma } from "@/lib/prisma";
-import { throttleAuth } from "@/lib/throttle";
+import { prisma } from "@/server/db";
+import { throttleAuth } from "@/server/throttle";
 
 export const POST = route(async (req) => {
   if (!isDemo) throw new Problem("Chức năng demo đã tắt.", 404);

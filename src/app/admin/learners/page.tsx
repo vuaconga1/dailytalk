@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { isLearnerFilter, LEARNER_FILTERS, listLearners } from "@/lib/admin";
-import { isCurrentProfile, profileLabels } from "@/lib/profile";
-import { levelInfo } from "@/lib/profile-options";
-import { requireStaff } from "@/lib/page-guards";
+import { isLearnerFilter, LEARNER_FILTERS, listLearners } from "@/server/admin";
+import { isCurrentProfile, profileLabels } from "@/domain/profile";
+import { levelInfo } from "@/domain/profile-options";
+import { requireStaff } from "@/server/http/page-guards";
 import { formatVnDate, vnDate } from "@/lib/time";
 
 const STATUS_LABELS = { LEAD: "Chờ kích hoạt", ACTIVE: "Đang học", PAUSED: "Tạm dừng", EXPIRED: "Hết hạn" } as const;

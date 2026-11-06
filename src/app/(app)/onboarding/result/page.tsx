@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { RoadmapGrid } from "@/components/plan/roadmap-grid";
-import { requirePlan } from "@/lib/page-guards";
-import { profileLabels } from "@/lib/profile";
+import { requirePlan } from "@/server/http/page-guards";
+import { profileLabels } from "@/domain/profile";
 
 export default async function OnboardingResultPage() {
   const user = await requirePlan();

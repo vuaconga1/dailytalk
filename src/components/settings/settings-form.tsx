@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { api, errorMessage } from "@/lib/client-api";
+import { api, errorMessage } from "@/client/api";
 
 type Props = { name: string; email: string; studyTime: string; reminders: boolean };
 

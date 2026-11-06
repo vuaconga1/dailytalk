@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { errorMessage } from "@/lib/client-api";
+import { errorMessage } from "@/client/api";
 
 /** Runs an async click handler, keeps the button disabled while pending and reports failures. */
 export function useAction(onError: (message: string) => void) {

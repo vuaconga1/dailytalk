@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { api } from "@/lib/client-api";
+import { api } from "@/client/api";
 
 export function LogoutButton({ variant = "dark" }: { variant?: "dark" | "light" }) {
   const router = useRouter();
@@ -11,10 +11,10 @@ export function LogoutButton({ variant = "dark" }: { variant?: "dark" | "light" 
   return (
     <button
       type="button"
-      className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
+      className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all duration-200 active:scale-95 disabled:opacity-50 ${
         variant === "dark"
-          ? "text-slate-300 hover:bg-white/10 hover:text-white"
-          : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+          ? "border-white/20 text-slate-200 hover:border-red-300/60 hover:bg-red-400/10 hover:text-white"
+          : "border-slate-300 text-slate-600 hover:border-slate-500 hover:bg-slate-100 hover:text-slate-800"
       }`}
       disabled={busy}
       title="Đăng xuất khỏi tài khoản"

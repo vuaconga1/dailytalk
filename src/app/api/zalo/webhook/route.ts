@@ -1,8 +1,8 @@
 import type { NextRequest } from "next/server";
-import { json, route } from "@/lib/api";
+import { json, route } from "@/server/http/api";
 import { Problem } from "@/lib/errors";
-import { prisma } from "@/lib/prisma";
-import { LINK_CODE_PATTERN, sendText, verifyWebhook } from "@/lib/zalo";
+import { prisma } from "@/server/db";
+import { LINK_CODE_PATTERN, sendText, verifyWebhook } from "@/server/integrations/zalo";
 
 export const dynamic = "force-dynamic";
 

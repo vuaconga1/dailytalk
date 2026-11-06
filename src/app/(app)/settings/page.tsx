@@ -1,15 +1,15 @@
 import { SettingsForm } from "@/components/settings/settings-form";
 import { ZaloLinkCard } from "@/components/settings/zalo-link-card";
-import { requirePlan } from "@/lib/page-guards";
-import { prisma } from "@/lib/prisma";
-import { oaFollowUrl, zaloConfigured } from "@/lib/zalo";
+import { requirePlan } from "@/server/http/page-guards";
+import { prisma } from "@/server/db";
+import { oaFollowUrl, zaloConfigured } from "@/server/integrations/zalo";
 
 export default async function SettingsPage() {
   const user = await requirePlan();
   const link = user.isDemo ? null : await prisma.zaloLink.findUnique({ where: { userId: user.id } });
 
   return (
-    <section className="animate-fade-in max-w-[850px] pb-12">
+    <section className="animate-fade-in mx-auto w-full max-w-[850px] pb-12">
       <div className="mb-8 border-b border-[#e2e8f4] pb-6">
         <div className="eyebrow flex items-center gap-2">
           <span className="size-2 rounded-full bg-gold" />

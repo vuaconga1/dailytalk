@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ApiForm } from "@/components/admin/api-form";
-import { can, DEFAULT_PACKAGE_DAYS } from "@/lib/access";
-import { learnerDetail, staffList } from "@/lib/admin";
-import type { WeeklyHighlights } from "@/lib/jobs";
-import { requireStaff } from "@/lib/page-guards";
-import { isCurrentProfile, profileLabels } from "@/lib/profile";
-import { FREQUENCIES, labelOf, levelInfo } from "@/lib/profile-options";
+import { can, DEFAULT_PACKAGE_DAYS } from "@/domain/access";
+import { learnerDetail, staffList } from "@/server/admin";
+import type { WeeklyHighlights } from "@/server/jobs";
+import { requireStaff } from "@/server/http/page-guards";
+import { isCurrentProfile, profileLabels } from "@/domain/profile";
+import { FREQUENCIES, labelOf, levelInfo } from "@/domain/profile-options";
 import { formatVnDate, vnDate } from "@/lib/time";
-import type { StudyPlan, Turn } from "@/lib/types";
+import type { StudyPlan, Turn } from "@/domain/types";
 
 const STATUS_LABELS = { LEAD: "Chờ kích hoạt", ACTIVE: "Đang học", PAUSED: "Tạm dừng", EXPIRED: "Hết hạn" } as const;
 const GOAL_LABELS = { achieved: "Đạt", needs_review: "Cần ôn", insufficient_evidence: "Chưa đủ dữ liệu" } as const;

@@ -1,8 +1,8 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
-import { json, route } from "@/lib/api";
+import { json, route } from "@/server/http/api";
 import { Problem } from "@/lib/errors";
-import { buildWeeklyReports, expireAccounts, lastWeekStart, runStudyJobs } from "@/lib/jobs";
+import { buildWeeklyReports, expireAccounts, lastWeekStart, runStudyJobs } from "@/server/jobs";
 import { weekStartOf } from "@/lib/time";
 
 export const dynamic = "force-dynamic";

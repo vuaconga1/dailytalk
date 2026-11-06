@@ -1,9 +1,9 @@
 import type { Role } from "@/generated/prisma/client";
-import { STAFF_ROLES } from "@/lib/access";
-import { json, readJson, staffRoute } from "@/lib/api";
-import { hashPassword } from "@/lib/auth";
+import { STAFF_ROLES } from "@/domain/access";
+import { json, readJson, staffRoute } from "@/server/http/api";
+import { hashPassword } from "@/server/auth";
 import { Problem } from "@/lib/errors";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/server/db";
 import { readCredentials } from "../../auth/credentials";
 
 /** Creates a staff account, or updates role / password of an existing staff account. */

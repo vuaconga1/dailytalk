@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { WeekReview } from "@/lib/types";
+import type { WeekReview } from "@/domain/types";
 
 export function WeekSummaryCard({ review }: { review: WeekReview }) {
   const [open, setOpen] = useState(false);

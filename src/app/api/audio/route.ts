@@ -1,9 +1,9 @@
-import { authedRoute } from "@/lib/api";
-import { isDemo } from "@/lib/ai";
-import { normalizeLesson } from "@/lib/content";
+import { authedRoute } from "@/server/http/api";
+import { isDemo } from "@/server/ai/config";
+import { normalizeLesson } from "@/domain/content";
 import { Problem } from "@/lib/errors";
-import { cachedSpeech, lessonAudio, speechResponse } from "@/lib/learning";
-import { prisma } from "@/lib/prisma";
+import { cachedSpeech, lessonAudio, speechResponse } from "@/server/learning/audio";
+import { prisma } from "@/server/db";
 
 /** Shared shadowing audio of a lesson the learner has been given: the whole dialogue or one line. */
 export const GET = authedRoute(async (req, user) => {

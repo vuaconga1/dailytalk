@@ -1,9 +1,9 @@
-import { isDemo } from "@/lib/ai";
-import { json, readJson, staffRoute } from "@/lib/api";
-import { normalizeLesson } from "@/lib/content";
+import { isDemo } from "@/server/ai/config";
+import { json, readJson, staffRoute } from "@/server/http/api";
+import { normalizeLesson } from "@/domain/content";
 import { Problem } from "@/lib/errors";
-import { cachedSpeech, lessonAudio } from "@/lib/learning";
-import { prisma } from "@/lib/prisma";
+import { cachedSpeech, lessonAudio } from "@/server/learning/audio";
+import { prisma } from "@/server/db";
 
 export const maxDuration = 60;
 

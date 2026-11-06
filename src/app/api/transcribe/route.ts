@@ -1,8 +1,10 @@
-import { authedRoute, json, MAX_BODY_BYTES } from "@/lib/api";
-import { aiConfig, transcribe } from "@/lib/ai";
-import { normalizeLesson } from "@/lib/content";
+import { authedRoute, json, MAX_BODY_BYTES } from "@/server/http/api";
+import { aiConfig } from "@/server/ai/config";
+import { transcribe } from "@/server/ai/speech";
+import { normalizeLesson } from "@/domain/content";
 import { Problem } from "@/lib/errors";
-import { logUsage, ownedAttempt, reserveProviderCall, withPracticeLock } from "@/lib/learning";
+import { ownedAttempt, withPracticeLock } from "@/server/learning/practice";
+import { logUsage, reserveProviderCall } from "@/server/learning/usage";
 
 const AUDIO_TYPES = new Set(["audio/webm", "audio/mp4", "audio/wav", "audio/ogg"]);
 

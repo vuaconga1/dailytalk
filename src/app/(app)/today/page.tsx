@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { getHistory, getTodayAttempt } from "@/lib/learning";
-import { requirePlan } from "@/lib/page-guards";
-import { profileLabels } from "@/lib/profile";
-import { levelInfo } from "@/lib/profile-options";
-import { completedCount, lastWeek, streak, totalTurns } from "@/lib/stats";
+import { getHistory } from "@/server/learning/history";
+import { getTodayAttempt } from "@/server/learning/lessons";
+import { requirePlan } from "@/server/http/page-guards";
+import { profileLabels } from "@/domain/profile";
+import { levelInfo } from "@/domain/profile-options";
+import { completedCount, lastWeek, streak, totalTurns } from "@/domain/stats";
 
 const FLOW = [
   ["01", "Từ vựng & cấu trúc", "Hiểu từ, học mẫu câu để dùng ngay trong công việc.", "3 phút"],
@@ -35,16 +36,11 @@ export default async function TodayPage() {
       {/* Top Welcome Header */}
       <div className="mb-8 gap-5 md:flex md:items-end md:justify-between border-b border-[#e2e8f4] pb-6">
         <div>
-          <div className="eyebrow flex items-center gap-2">
-            <span className="size-2 rounded-full bg-gold" />
-            MỖI NGÀY MỘT BƯỚC TIẾN
-          </div>
+    
           <h1 className="page-title mt-1">
             Chào {callName(user.name)}, sẵn sàng cho 15 phút hôm nay?
           </h1>
-          <p className="mt-2.5 text-base text-slate-600">
-            Không cần nói hoàn hảo. Hôm nay, hãy bắt đầu bằng một câu chuẩn chỉnh trong công việc.
-          </p>
+         
         </div>
 
         <div className="mt-4 shrink-0 md:mt-0">

@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/auth/auth-form";
 import { Brand } from "@/components/layout/brand";
-import { isDemo } from "@/lib/ai";
-import { getSessionUser } from "@/lib/auth";
+import { isDemo } from "@/server/ai/config";
+import { getSessionState, SESSION_END_MESSAGES } from "@/server/auth";
 
 export default async function LoginPage() {
-  if (await getSessionUser()) redirect("/");
+  const { user, ended } = await getSessionState();
+  if (user) redirect("/");
   return (
     <div className="min-h-screen bg-white md:grid md:grid-cols-[1.05fr_1fr]">
       <section className="relative flex flex-col justify-center bg-gradient-to-br from-navy to-navy-deep p-6 text-white md:px-[10%] md:py-14">
@@ -28,7 +29,7 @@ export default async function LoginPage() {
         </div>
         <small className="hidden text-[#a9c4d6] md:block">Đạo Đức · Trí Tuệ · Bản Lĩnh</small>
       </section>
-      <AuthForm demoEnabled={isDemo} />
+      <AuthForm demoEnabled={isDemo} notice={ended ? SESSION_END_MESSAGES[ended] : ""} />
     </div>
   );
 }

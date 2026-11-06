@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { formatVnDate } from "@/lib/time";
-import type { HistoryItem } from "@/lib/types";
+import type { HistoryItem } from "@/domain/types";
 
 function formatFullVnDate(dateStr: string): string {
   try {

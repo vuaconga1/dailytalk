@@ -29,6 +29,12 @@ export function formatVnDate(date: string): string {
   return date.split("-").reverse().join("/");
 }
 
+/** "HH:MM DD/MM/YYYY" in Vietnam time. */
+export function formatVnDateTime(at: Date): string {
+  const iso = new Date(+at + VN_OFFSET_MS).toISOString();
+  return `${iso.slice(11, 16)} ${formatVnDate(iso.slice(0, 10))}`;
+}
+
 /** Minutes since Vietnam midnight. */
 export function vnMinuteOfDay(at: Date | number = Date.now()): number {
   return Math.floor(((+at + VN_OFFSET_MS) % DAY_MS) / 60_000);

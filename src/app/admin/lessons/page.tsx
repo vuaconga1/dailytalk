@@ -1,11 +1,11 @@
 import { ApiForm } from "@/components/admin/api-form";
-import { isDemo } from "@/lib/ai";
-import { normalizeLesson } from "@/lib/content";
-import { lessonAudio } from "@/lib/learning";
-import { requireStaff } from "@/lib/page-guards";
-import { prisma } from "@/lib/prisma";
-import { levelInfo, LEVEL_IDS, type LevelId } from "@/lib/profile-options";
-import { r2Enabled } from "@/lib/r2";
+import { isDemo } from "@/server/ai/config";
+import { normalizeLesson } from "@/domain/content";
+import { lessonAudio } from "@/server/learning/audio";
+import { requireStaff } from "@/server/http/page-guards";
+import { prisma } from "@/server/db";
+import { levelInfo, LEVEL_IDS, type LevelId } from "@/domain/profile-options";
+import { r2Enabled } from "@/server/integrations/r2";
 import { formatVnDate, vnDate } from "@/lib/time";
 
 export default async function LessonsPage() {
@@ -21,7 +21,7 @@ export default async function LessonsPage() {
       <div className="eyebrow">HỌC THUẬT</div>
       <h1 className="page-title mb-2">Ngân hàng bài dùng chung.</h1>
       <p className="mb-6 max-w-[900px] text-muted">
-        Bài học lấy từ giáo trình soạn sẵn của 14 nhóm nghề (<code>src/lib/curriculum</code>), được lưu vào đây khi học viên đầu tiên học
+        Bài học lấy từ giáo trình soạn sẵn của 14 nhóm nghề (<code>src/data/curriculum</code>), được lưu vào đây khi học viên đầu tiên học
         tới và dùng lại cho học viên có cùng nội dung. Khi bật AI, bài được viết lại cho trình độ khác Sơ cấp và cũng lưu tại đây. Audio
         shadowing lưu ở <b>{r2Enabled() ? "Cloudflare R2" : "database (chưa cấu hình R2)"}</b>.
       </p>

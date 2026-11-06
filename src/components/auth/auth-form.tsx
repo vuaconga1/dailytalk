@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { api, errorMessage } from "@/lib/client-api";
+import { api, errorMessage } from "@/client/api";
 
-export function AuthForm({ demoEnabled }: { demoEnabled: boolean }) {
+export function AuthForm({ demoEnabled, notice = "" }: { demoEnabled: boolean; notice?: string }) {
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [busy, setBusy] = useState(false);
@@ -41,6 +41,11 @@ export function AuthForm({ demoEnabled }: { demoEnabled: boolean }) {
           ? "Tạo tài khoản, chọn mục tiêu và thiết kế nhịp học của riêng bạn."
           : "Đăng nhập để tiếp tục buổi học."}
       </p>
+      {notice && (
+        <p className="note mb-5" role="alert">
+          {notice}
+        </p>
+      )}
       {demoEnabled && (
         <>
           <button type="button" className="btn btn-gold w-full" disabled={busy} onClick={() => run(() => api("/api/auth/demo", {}))}>

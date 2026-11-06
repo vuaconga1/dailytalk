@@ -1,8 +1,10 @@
-import { authedRoute, readJson } from "@/lib/api";
-import { aiConfig } from "@/lib/ai";
+import { authedRoute, readJson } from "@/server/http/api";
+import { aiConfig } from "@/server/ai/config";
 import { Problem } from "@/lib/errors";
-import { cachedSpeech, sha256, speechResponse, withPracticeLock } from "@/lib/learning";
-import type { Turn } from "@/lib/types";
+import { cachedSpeech, speechResponse } from "@/server/learning/audio";
+import { withPracticeLock } from "@/server/learning/practice";
+import { sha256 } from "@/server/learning/usage";
+import type { Turn } from "@/domain/types";
 
 export const POST = authedRoute(async (req, user) => {
   const sessionId = (await readJson(req)).session_id;

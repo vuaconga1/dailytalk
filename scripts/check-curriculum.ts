@@ -4,14 +4,14 @@
  *   npm run check:curriculum
  *   npm run check:curriculum -- --cluster sales     (one cluster only)
  */
-import { buildPlan, CLUSTERS, coverage, isModuleRef, renderLesson } from "../src/lib/curriculum";
-import { INDUSTRY_MEMBERS } from "../src/lib/curriculum/members";
-import { buildReviewLesson, REVIEW_DAYS, reviewSources } from "../src/lib/curriculum/review";
-import { INTERVIEW_DAYS, TRAVEL_DAYS } from "../src/lib/curriculum/modules";
-import { WORK_AUDIENCES, type CurriculumDay } from "../src/lib/curriculum/types";
-import { POS_IDS, usesFrame } from "../src/lib/frames";
-import { INDUSTRIES, slugify } from "../src/lib/profile-options";
-import type { LearnerProfile, Lesson } from "../src/lib/types";
+import { buildPlan, CLUSTERS, coverage, isModuleRef, renderLesson } from "../src/domain/curriculum";
+import { INDUSTRY_MEMBERS } from "../src/domain/curriculum/members";
+import { buildReviewLesson, REVIEW_DAYS, reviewSources } from "../src/domain/curriculum/review";
+import { INTERVIEW_DAYS, TRAVEL_DAYS } from "../src/domain/curriculum/modules";
+import { WORK_AUDIENCES, type CurriculumDay } from "../src/domain/curriculum/types";
+import { POS_IDS, usesFrame } from "../src/domain/frames";
+import { INDUSTRIES, slugify } from "../src/domain/profile-options";
+import type { LearnerProfile, Lesson } from "../src/domain/types";
 
 const only = process.argv.includes("--cluster") ? process.argv[process.argv.indexOf("--cluster") + 1] : null;
 const problems: string[] = [];

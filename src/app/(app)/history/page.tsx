@@ -1,7 +1,7 @@
 import { HistoryView } from "@/components/history/history-view";
-import { getHistory, getWeekReviews } from "@/lib/learning";
-import { requirePlan } from "@/lib/page-guards";
-import { streak } from "@/lib/stats";
+import { getHistory, getWeekReviews } from "@/server/learning/history";
+import { requirePlan } from "@/server/http/page-guards";
+import { streak } from "@/domain/stats";
 
 export default async function HistoryPage() {
   const user = await requirePlan();

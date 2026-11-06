@@ -1,6 +1,6 @@
 "use client";
 
-import type { HistoryItem, WeekReview } from "@/lib/types";
+import type { HistoryItem, WeekReview } from "@/domain/types";
 
 type MonthOption = {
   value: string;

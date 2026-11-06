@@ -2,15 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "@/lib/client-api";
-import type { AttemptView, PracticeView, Summary, Turn, WeekReview } from "@/lib/types";
+import { api } from "@/client/api";
+import type { AttemptView, PracticeView, Summary, Turn, WeekReview } from "@/domain/types";
 import { PracticeStep } from "./practice-step";
 import { ShadowStep } from "./shadow-step";
 import { SummaryStep } from "./summary-step";
 import { useMedia } from "./use-media";
 import { WordsStep } from "./words-step";
 
-const DAILY_SECONDS = 300;
+const DAILY_SECONDS = 180;
 const STEPS = ["01. Từ & mẫu câu", "02. Shadowing", "03. Hội thoại AI", "04. Tổng kết"];
 
 type Props = { initial: AttemptView; week: WeekReview; serverTime: number; demo: boolean; contextLabel: string };
@@ -77,17 +77,19 @@ export function LessonPlayer({ initial, week, serverTime, demo, contextLabel }: 
     const r = await api<{ practice: PracticeView; serverTime: number }>("/api/practice/start", { attempt_id: attempt.id });
     offsetRef.current = r.serverTime - Date.now();
     setPractice(r.practice);
+    setAttempt((a) => (a.completed ? { ...a, completed: false, summary: null } : a));
   }
 
-  async function sendTurn(text: string, inputMode: "voice" | "text") {
+  async function sendTurn(text: string) {
     if (!practice) return;
     const r = await api<{ turns: Turn[]; serverTime: number }>("/api/practice/turn", {
       session_id: practice.id,
       text,
-      input_mode: inputMode,
+      input_mode: "voice",
+      record_only: true,
     });
     offsetRef.current = r.serverTime - Date.now();
-    setPractice({ ...practice, turns: r.turns });
+    setPractice((p) => (p ? { ...p, turns: r.turns } : p));
   }
 
   async function finish() {
@@ -104,7 +106,7 @@ export function LessonPlayer({ initial, week, serverTime, demo, contextLabel }: 
   const stepDone = [attempt.wordsDone, attempt.shadowDone, false, attempt.completed];
 
   return (
-    <section className="animate-fade-in max-w-[1000px] pb-12">
+    <section className="animate-fade-in mx-auto w-full max-w-[1000px] pb-12">
       {/* Top Header Row with Timer */}
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4 border-b border-[#e2e8f4] pb-5 md:items-center">
         <div>
@@ -129,9 +131,9 @@ export function LessonPlayer({ initial, week, serverTime, demo, contextLabel }: 
             {practice?.ended ? "Đã xong" : mounted ? clock(left) : clock(DAILY_SECONDS)}
           </div>
           <div className="text-[10px] font-bold uppercase tracking-wider text-amber-800 leading-tight">
-            Phiên hội thoại
+            Phiên nói
             <br />
-            tối đa 5 phút
+            3 phút
           </div>
         </div>
       </div>

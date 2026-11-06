@@ -1,9 +1,9 @@
-import { DEFAULT_PACKAGE_DAYS } from "@/lib/access";
-import { json, readJson, staffRoute } from "@/lib/api";
+import { DEFAULT_PACKAGE_DAYS } from "@/domain/access";
+import { json, readJson, staffRoute } from "@/server/http/api";
 import { Problem } from "@/lib/errors";
-import { appUrl } from "@/lib/jobs";
-import { notify } from "@/lib/notify";
-import { prisma } from "@/lib/prisma";
+import { appUrl } from "@/server/jobs";
+import { notify } from "@/server/notify";
+import { prisma } from "@/server/db";
 import { vnDate } from "@/lib/time";
 
 const DAY_MS = 86_400_000;
@@ -26,7 +26,7 @@ export const PATCH = staffRoute("manageLearners", async (req, staff) => {
   if (!ACTIONS.includes(action)) throw new Problem("Thao tác không hợp lệ.");
   const learner = await prisma.user.findFirst({
     where: { id: String(body.id ?? ""), role: "LEARNER", isDemo: false },
-    select: { id: true, name: true, status: true, accessEndsAt: true, activatedAt: true, consultantId: true },
+    select: { id: true, name: true, status: true, accessEndsAt: true, lockAt: true, activatedAt: true, consultantId: true },
   });
   if (!learner) throw new Problem("Không tìm thấy học viên.", 404);
 
@@ -52,6 +52,7 @@ export const PATCH = staffRoute("manageLearners", async (req, staff) => {
         packageName,
         activatedAt: learner.activatedAt ?? now,
         accessEndsAt,
+        lockAt: null,
         phone: text(body.phone, 30) ?? undefined,
         consultantId: consultantId ?? learner.consultantId ?? (staff.role === "CONSULTANT" ? staff.id : null),
       },
@@ -68,6 +69,7 @@ export const PATCH = staffRoute("manageLearners", async (req, staff) => {
     note = "Tạm dừng tài khoản.";
   } else if (action === "resume") {
     if (!learner.accessEndsAt || learner.accessEndsAt <= now) throw new Problem("Gói đã hết hạn, hãy kích hoạt/gia hạn.");
+    if (learner.lockAt && learner.lockAt <= now) throw new Problem("Học viên đã hoàn thành lộ trình và bị khóa, hãy kích hoạt lại.");
     await prisma.user.update({ where: { id: learner.id }, data: { status: "ACTIVE" } });
     note = "Mở lại tài khoản.";
   } else {

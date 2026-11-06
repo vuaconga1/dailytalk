@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { OnboardingForm } from "@/components/onboarding/onboarding-form";
-import { requireUser } from "@/lib/page-guards";
-import { isCurrentProfile } from "@/lib/profile";
+import { requireUser } from "@/server/http/page-guards";
+import { isCurrentProfile } from "@/domain/profile";
 
 export default async function OnboardingPage() {
   const user = await requireUser();
@@ -16,7 +16,7 @@ export default async function OnboardingPage() {
           Cho WeWIN biết công việc, người bạn cần giao tiếp và mục tiêu. Lộ trình sẽ xoay quanh đúng những tình huống đó.
         </p>
       </div>
-      <OnboardingForm restart={Boolean(user.plan && !current)} />
+      <OnboardingForm restart={Boolean(user.plan && !current)} defaultName={user.isDemo ? "" : user.name} />
     </section>
   );
 }

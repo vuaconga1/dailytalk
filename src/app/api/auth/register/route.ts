@@ -1,8 +1,8 @@
-import { clientIp, json, readJson, route } from "@/lib/api";
-import { createSession, hashPassword } from "@/lib/auth";
+import { clientIp, json, readJson, route } from "@/server/http/api";
+import { createSession, hashPassword } from "@/server/auth";
 import { Problem } from "@/lib/errors";
-import { prisma } from "@/lib/prisma";
-import { throttleAuth } from "@/lib/throttle";
+import { prisma } from "@/server/db";
+import { throttleAuth } from "@/server/throttle";
 import { readCredentials } from "../credentials";
 
 export const POST = route(async (req) => {

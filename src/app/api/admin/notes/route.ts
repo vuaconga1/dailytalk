@@ -1,6 +1,6 @@
-import { json, readJson, staffRoute } from "@/lib/api";
+import { json, readJson, staffRoute } from "@/server/http/api";
 import { Problem } from "@/lib/errors";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/server/db";
 
 export const POST = staffRoute("viewLearners", async (req, staff) => {
   const body = await readJson(req);

@@ -1,10 +1,11 @@
-import { authedRoute, json, readJson } from "@/lib/api";
-import { reply } from "@/lib/ai";
+import { authedRoute, json, readJson } from "@/server/http/api";
+import { reply } from "@/server/ai/coach";
 import { Problem } from "@/lib/errors";
-import { logUsage, MAX_TURNS, ownedAttempt, reserveProviderCall, withPracticeLock } from "@/lib/learning";
-import { prisma } from "@/lib/prisma";
-import { normalizeLesson } from "@/lib/content";
-import type { Turn } from "@/lib/types";
+import { MAX_TURNS, ownedAttempt, withPracticeLock } from "@/server/learning/practice";
+import { logUsage, reserveProviderCall } from "@/server/learning/usage";
+import { prisma } from "@/server/db";
+import { normalizeLesson } from "@/domain/content";
+import type { Turn } from "@/domain/types";
 
 export const POST = authedRoute(async (req, user) => {
   const body = await readJson(req);
@@ -17,6 +18,10 @@ export const POST = authedRoute(async (req, user) => {
     const turns = practice.turns as Turn[];
     if (turns.length > MAX_TURNS * 2) throw new Problem(`Đã đạt giới hạn ${MAX_TURNS} lượt cho phiên này.`, 409);
     turns.push({ role: "user", text, input_mode: body.input_mode === "voice" ? "voice" : "text" });
+    if (body.record_only === true) {
+      await prisma.practice.update({ where: { id: practice.id }, data: { turns } });
+      return turns;
+    }
     const lesson = normalizeLesson((await ownedAttempt(user, practice.attemptId)).lesson);
     await reserveProviderCall(user.id, "conversation");
     const [answer, usage] = await reply(profile, lesson, turns, MAX_TURNS);

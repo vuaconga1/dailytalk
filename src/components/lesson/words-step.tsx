@@ -1,7 +1,7 @@
 "use client";
 
-import { PARTS_OF_SPEECH, usesFrame } from "@/lib/frames";
-import type { Lesson } from "@/lib/types";
+import { PARTS_OF_SPEECH, usesFrame } from "@/domain/frames";
+import type { Lesson } from "@/domain/types";
 import { useAction } from "./use-action";
 import type { useMedia } from "./use-media";
 

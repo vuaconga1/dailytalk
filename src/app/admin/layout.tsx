@@ -1,8 +1,9 @@
 import { AdminNav, type AdminLink } from "@/components/admin/admin-nav";
 import { Brand } from "@/components/layout/brand";
 import { LogoutButton } from "@/components/layout/logout-button";
-import { can, ROLE_LABELS, type Permission } from "@/lib/access";
-import { requireStaff } from "@/lib/page-guards";
+import { SessionWatch } from "@/components/layout/session-watch";
+import { can, ROLE_LABELS, type Permission } from "@/domain/access";
+import { requireStaff } from "@/server/http/page-guards";
 
 const LINKS: (AdminLink & { permission: Permission })[] = [
   { href: "/admin", label: "Tổng quan", icon: "◈", permission: "viewLearners" },
@@ -22,6 +23,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="mb-11 hidden text-[11px] tracking-[2px] text-[#a9c4d6] md:block">STAFF CONSOLE</div>
         <AdminNav links={links} />
       </aside>
+      <SessionWatch />
       <main className="mx-auto w-full max-w-[1460px] px-4 py-[22px] md:p-[25px] lg:px-11 lg:py-[30px]">
         <header className="mb-[22px] flex items-center justify-end gap-3 md:mb-9">
           <div className="text-right text-[13px]">

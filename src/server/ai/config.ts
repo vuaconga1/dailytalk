@@ -1,0 +1,92 @@
+/** Server-only AI adapter. All models are configurable; no paid calls in demo. */
+import "server-only";
+import OpenAI from "openai";
+import { profileLabels } from "@/domain/profile";
+import { levelInfo } from "@/domain/profile-options";
+import type { LearnerProfile } from "@/domain/types";
+import { AIError } from "@/lib/errors";
+
+export type Usage = Record<string, unknown>;
+
+function readConfig() {
+  const mode = process.env.AI_MODE?.trim() || "demo";
+  if (mode !== "demo" && mode !== "openai") throw new Error("AI_MODE must be demo or openai");
+  const config = {
+    mode,
+    key: process.env.OPENAI_API_KEY?.trim() ?? "",
+    model: process.env.OPENAI_TEXT_MODEL?.trim() ?? "",
+    stt: process.env.OPENAI_TRANSCRIBE_MODEL?.trim() ?? "",
+    tts: process.env.OPENAI_TTS_MODEL?.trim() ?? "",
+    voice: process.env.OPENAI_VOICE?.trim() || "alloy",
+  } as const;
+  if (mode === "openai" && !(config.key && config.model && config.stt && config.tts)) {
+    throw new Error("AI_MODE=openai cần OPENAI_API_KEY và đủ ba tên model. Xem .env.example.");
+  }
+  return config;
+}
+
+export const aiConfig = readConfig();
+export const isDemo = aiConfig.mode === "demo";
+
+let client: OpenAI | null = null;
+export function openai(): OpenAI {
+  client ??= new OpenAI({
+    apiKey: aiConfig.key,
+    timeout: 60_000,
+    maxRetries: 0,
+  });
+  return client;
+}
+
+export async function call<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if (error instanceof AIError) throw error;
+    throw new AIError("Không kết nối được dịch vụ AI. Hãy thử lại sau.", {
+      cause: error,
+    });
+  }
+}
+
+export async function text(instructions: string, data: unknown, jsonMode: boolean, maxTokens = 2400): Promise<[unknown, Usage]> {
+  const result = await call(() =>
+    openai().responses.create({
+      model: aiConfig.model,
+      instructions,
+      input: JSON.stringify(data),
+      max_output_tokens: jsonMode ? maxTokens : 400,
+      store: false,
+      ...(jsonMode ? { text: { format: { type: "json_object" as const } } } : {}),
+    }),
+  );
+  const out = result.output_text;
+  if (!out) throw new AIError("AI chưa trả về nội dung hợp lệ.");
+  let value: unknown = out;
+  if (jsonMode) {
+    try {
+      value = JSON.parse(out);
+    } catch {
+      throw new AIError("AI chưa trả về nội dung hợp lệ.");
+    }
+  }
+  return [value, (result.usage ?? {}) as unknown as Usage];
+}
+
+export const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+export const isText = (v: unknown, max: number): v is string => typeof v === "string" && v.trim().length > 0 && v.length <= max;
+export const isTextList = (v: unknown, min: number, max: number, len: number): v is string[] =>
+  Array.isArray(v) && v.length >= min && v.length <= max && v.every((t) => isText(t, len));
+
+/** What the AI needs to know about the learner (labels, never raw ids). */
+export function learnerContext(profile: LearnerProfile) {
+  const labels = profileLabels(profile);
+  return {
+    industry: labels.industry,
+    position: labels.position,
+    communicates_with: labels.audiences,
+    goals: labels.goals,
+    level: levelInfo(profile.working_level ?? profile.classification.level).label,
+    priorities: profile.classification.priorities.map((p) => p.label),
+  };
+}

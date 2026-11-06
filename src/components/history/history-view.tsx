@@ -6,7 +6,7 @@ import { HistoryCard } from "@/components/history/history-card";
 import { HistoryFilters, type SortOrder, type StatusFilter } from "@/components/history/history-filters";
 import { HistorySummary } from "@/components/history/history-summary";
 import { WeekSummaryCard } from "@/components/history/week-review-card";
-import type { HistoryItem, WeekReview } from "@/lib/types";
+import type { HistoryItem, WeekReview } from "@/domain/types";
 
 type Props = {
   history: HistoryItem[];

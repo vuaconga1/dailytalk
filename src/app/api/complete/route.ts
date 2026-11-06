@@ -1,12 +1,16 @@
-import { authedRoute, json, readJson } from "@/lib/api";
-import { aiConfig, summarize } from "@/lib/ai";
+import { authedRoute, json, readJson } from "@/server/http/api";
+import { FINISH_GRACE_MS, LAST_STUDY_DAY } from "@/domain/access";
+import { summarize } from "@/server/ai/coach";
+import { aiConfig } from "@/server/ai/config";
 import { Problem } from "@/lib/errors";
-import { normalizeLesson } from "@/lib/content";
-import { framesUsed } from "@/lib/frames";
-import { lockForSummary, logUsage, ownedAttempt, releaseLock, reserveProviderCall, updateWorkingLevel } from "@/lib/learning";
-import { prisma } from "@/lib/prisma";
+import { normalizeLesson } from "@/domain/content";
+import { framesUsed } from "@/domain/frames";
+import { updateWorkingLevel } from "@/server/learning/lessons";
+import { lockForSummary, OPEN_ALL_DAYS, ownedAttempt, releaseLock } from "@/server/learning/practice";
+import { logUsage, reserveProviderCall } from "@/server/learning/usage";
+import { prisma } from "@/server/db";
 import { vnDate } from "@/lib/time";
-import type { Summary, Turn } from "@/lib/types";
+import type { Summary, Turn } from "@/domain/types";
 
 export const POST = authedRoute(async (req, user) => {
   const attempt = await ownedAttempt(user, (await readJson(req)).attempt_id, false);
@@ -38,6 +42,12 @@ export const POST = authedRoute(async (req, user) => {
     });
     await logUsage(user.id, "summary", usage);
     await updateWorkingLevel(user.id, user.profile);
+    if (attempt.day >= LAST_STUDY_DAY && !OPEN_ALL_DAYS) {
+      await prisma.user.updateMany({
+        where: { id: user.id, role: "LEARNER", isDemo: false, lockAt: null },
+        data: { lockAt: new Date(Date.now() + FINISH_GRACE_MS) },
+      });
+    }
     return json(summary);
   } finally {
     await releaseLock(practice.id, lockedAt);

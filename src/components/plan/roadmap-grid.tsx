@@ -1,18 +1,21 @@
-import { SKILL_LABELS } from "@/lib/classify";
-import type { PlanDay } from "@/lib/types";
+import Link from "next/link";
+import { SKILL_LABELS } from "@/domain/classify";
+import type { PlanDay } from "@/domain/types";
 
 type Props = {
   days: PlanDay[];
   completed?: Set<number>;
   current?: number;
   actual?: Map<number, string>;
+  /** Every day links to its lesson (testing mode). */
+  openAll?: boolean;
 };
 
 /**
  * 30-day reference roadmap designed to match WeWIN's brand color scheme.
  * Features Midnight Navy, Warm Gold, Soft Periwinkle Blue tags, and crisp white surfaces.
  */
-export function RoadmapGrid({ days, completed = new Set(), current, actual = new Map() }: Props) {
+export function RoadmapGrid({ days, completed = new Set(), current, actual = new Map(), openAll = false }: Props) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-5">
       {days.map((d, index) => {
@@ -84,10 +87,16 @@ export function RoadmapGrid({ days, completed = new Set(), current, actual = new
                 {SKILL_LABELS[d.skill]}
               </span>
 
-              {isCurrent && (
-                <span className="text-xs font-bold text-navy flex items-center gap-0.5">
-                  Vào học <span>→</span>
-                </span>
+              {openAll ? (
+                <Link href={`/lesson?day=${d.day}`} className="text-xs font-bold text-navy flex items-center gap-0.5 hover:text-gold">
+                  {done ? "Học lại" : "Vào học"} <span>→</span>
+                </Link>
+              ) : (
+                isCurrent && (
+                  <span className="text-xs font-bold text-navy flex items-center gap-0.5">
+                    Vào học <span>→</span>
+                  </span>
+                )
               )}
             </div>
           </article>

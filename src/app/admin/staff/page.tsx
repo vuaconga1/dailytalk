@@ -1,7 +1,7 @@
 import { ApiForm } from "@/components/admin/api-form";
-import { ROLE_LABELS, STAFF_ROLES } from "@/lib/access";
-import { staffList } from "@/lib/admin";
-import { requireStaff } from "@/lib/page-guards";
+import { ROLE_LABELS, STAFF_ROLES } from "@/domain/access";
+import { staffList } from "@/server/admin";
+import { requireStaff } from "@/server/http/page-guards";
 
 export default async function StaffPage() {
   await requireStaff("manageStaff");

@@ -2,10 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
-import { api, errorMessage } from "@/lib/client-api";
-import { AUDIENCES, DURATIONS, FREQUENCIES, GOALS, INDUSTRIES, labelOf, LEVELS, OTHER, type Option } from "@/lib/profile-options";
+import { api, errorMessage } from "@/client/api";
+import { isLightPace } from "@/domain/pace";
+import { MAX_AGE, MIN_AGE, NAME_MAX } from "@/domain/profile";
+import { AUDIENCES, DURATIONS, FREQUENCIES, GENDERS, GOALS, INDUSTRIES, labelOf, LEVELS, OTHER, type Option } from "@/domain/profile-options";
 
 type Form = {
+  name: string;
+  age: string;
+  gender: string;
   industry: string;
   industry_other: string;
   position: string;
@@ -20,6 +25,9 @@ type Form = {
 };
 
 const EMPTY: Form = {
+  name: "",
+  age: "",
+  gender: "",
   industry: "",
   industry_other: "",
   position: "",
@@ -78,9 +86,9 @@ function Choice({ name, options, value, onChange }: { name: string; options: rea
   );
 }
 
-export function OnboardingForm({ restart = false }: { restart?: boolean }) {
+export function OnboardingForm({ restart = false, defaultName = "" }: { restart?: boolean; defaultName?: string }) {
   const router = useRouter();
-  const [form, setForm] = useState<Form>(EMPTY);
+  const [form, setForm] = useState<Form>({ ...EMPTY, name: defaultName });
   const [step, setStep] = useState<"form" | "confirm">("form");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -114,6 +122,9 @@ export function OnboardingForm({ restart = false }: { restart?: boolean }) {
 
   if (step === "confirm") {
     const rows: [string, string][] = [
+      ["Họ và tên", form.name.trim()],
+      ["Tuổi", form.age],
+      ["Giới tính", labelOf(GENDERS, form.gender) ?? ""],
       ["Công việc", industryLabel ?? ""],
       ["Vị trí", positionLabel ?? ""],
       ["Giao tiếp với", form.audiences.map((a) => labelOf(AUDIENCES, a)).join(", ")],
@@ -135,6 +146,11 @@ export function OnboardingForm({ restart = false }: { restart?: boolean }) {
             </div>
           ))}
         </dl>
+        {isLightPace({ age: Number(form.age) }) && (
+          <p className="note mb-4">
+            Lộ trình sẽ theo nhịp nhẹ nhàng hơn: khoảng 5 từ mới cho mỗi 2 ngày học, ít mẫu câu và câu shadowing hơn mỗi buổi.
+          </p>
+        )}
         {restart && (
           <p className="note mb-4">Hồ sơ mới sẽ thay thế khảo sát cũ và bắt đầu lại lộ trình từ ngày 1.</p>
         )}
@@ -157,6 +173,45 @@ export function OnboardingForm({ restart = false }: { restart?: boolean }) {
     <form onSubmit={review} className="card">
       <h2 className="mb-4 text-[clamp(20px,2.2vw,25px)] font-bold tracking-[-0.5px]">01. Công việc của bạn</h2>
       <div className="grid gap-x-5 md:grid-cols-2">
+        <div className="field">
+          <label htmlFor="name">Họ và tên</label>
+          <input
+            id="name"
+            required
+            maxLength={NAME_MAX}
+            autoComplete="name"
+            value={form.name}
+            onChange={(e) => set("name", e.target.value)}
+            placeholder="Ví dụ: Nguyễn Văn An"
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="age">Tuổi</label>
+          <input
+            id="age"
+            type="number"
+            inputMode="numeric"
+            required
+            min={MIN_AGE}
+            max={MAX_AGE}
+            value={form.age}
+            onChange={(e) => set("age", e.target.value)}
+            placeholder="Ví dụ: 32"
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="gender">Giới tính</label>
+          <select id="gender" required value={form.gender} onChange={(e) => set("gender", e.target.value)}>
+            <option value="" disabled>
+              Chọn giới tính
+            </option>
+            {GENDERS.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.label}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="field">
           <label htmlFor="industry">Công việc</label>
           <select

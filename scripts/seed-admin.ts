@@ -5,7 +5,7 @@
  *   npm run seed:admin -- --email admin@wewin.edu.vn --password secret123 --name "Admin WeWIN"
  */
 import bcrypt from "bcryptjs";
-import { prisma } from "../src/lib/prisma";
+import { prisma } from "../src/server/db";
 
 async function main() {
   const args = process.argv.slice(2);

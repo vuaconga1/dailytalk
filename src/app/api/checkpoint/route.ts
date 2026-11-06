@@ -1,7 +1,7 @@
-import { authedRoute, json, readJson } from "@/lib/api";
+import { authedRoute, json, readJson } from "@/server/http/api";
 import { Problem } from "@/lib/errors";
-import { ownedAttempt } from "@/lib/learning";
-import { prisma } from "@/lib/prisma";
+import { ownedAttempt } from "@/server/learning/practice";
+import { prisma } from "@/server/db";
 
 export const POST = authedRoute(async (req, user) => {
   const body = await readJson(req);

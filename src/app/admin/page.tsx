@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { ApiForm } from "@/components/admin/api-form";
-import { can } from "@/lib/access";
-import { dashboardCounts } from "@/lib/admin";
-import { lastWeekStart, type WeeklyHighlights } from "@/lib/jobs";
-import { requireStaff } from "@/lib/page-guards";
-import { prisma } from "@/lib/prisma";
+import { can } from "@/domain/access";
+import { dashboardCounts } from "@/server/admin";
+import { lastWeekStart, type WeeklyHighlights } from "@/server/jobs";
+import { requireStaff } from "@/server/http/page-guards";
+import { prisma } from "@/server/db";
 import { formatVnDate, shiftDays } from "@/lib/time";
 
 export default async function AdminHome() {

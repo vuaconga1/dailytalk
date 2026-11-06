@@ -1,5 +1,5 @@
 import { WeekReviewCard } from "@/components/week-review";
-import type { Summary, WeekReview } from "@/lib/types";
+import type { Summary, WeekReview } from "@/domain/types";
 
 type Props = {
   summary: Summary | null;

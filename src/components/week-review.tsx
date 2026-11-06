@@ -1,4 +1,4 @@
-import type { WeekReview } from "@/lib/types";
+import type { WeekReview } from "@/domain/types";
 
 const DOT: Record<string, string> = {
   achieved: "bg-emerald-500 text-white",
