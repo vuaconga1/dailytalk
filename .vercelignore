@@ -1,0 +1,14 @@
+node_modules
+.next
+out
+build
+.env
+.env.local
+.env.*.local
+*.pem
+*.tsbuildinfo
+next-env.d.ts
+src/generated/prisma
+.cursor
+.cursorindexingignore
+~
