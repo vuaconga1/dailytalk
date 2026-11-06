@@ -2,7 +2,7 @@
  * Pre-generates shared shadowing + vocabulary audio with the configured TTS (Kokoro via TTS_BASE_URL).
  * Clips already cached are skipped, so it is safe to re-run.
  *
- *   npm run audio:gen                   (every lesson in the bank)
+ *   npm run audio:gen                   (bank lessons + lessons already given to learners)
  *   npm run audio:gen -- --curriculum   (every rendering of the authored curriculum; can take hours on CPU)
  */
 import "dotenv/config";
@@ -42,9 +42,13 @@ function* curriculumLessons(): Generator<Lesson> {
   }
 }
 
-async function bankLessons(): Promise<Lesson[]> {
-  const rows = await prisma.lessonContent.findMany({ select: { lesson: true } });
-  return rows.map((r) => normalizeLesson(r.lesson));
+/** Bank lessons plus every lesson already given to a learner (review days and seeded attempts are not in the bank). */
+async function storedLessons(): Promise<Lesson[]> {
+  const [bank, given] = await Promise.all([
+    prisma.lessonContent.findMany({ select: { lesson: true } }),
+    prisma.attempt.findMany({ select: { lesson: true } }),
+  ]);
+  return [...bank, ...given].map((r) => normalizeLesson(r.lesson));
 }
 
 async function main() {
@@ -52,7 +56,7 @@ async function main() {
   const staff = await prisma.user.findFirst({ where: { role: "ADMIN" }, select: { id: true } });
   if (!staff) throw new Error("Chưa có tài khoản admin (npm run seed:admin).");
 
-  const lessons = process.argv.includes("--curriculum") ? [...curriculumLessons()] : await bankLessons();
+  const lessons = process.argv.includes("--curriculum") ? [...curriculumLessons(), ...(await storedLessons())] : await storedLessons();
   const clips = new Map<string, string>();
   for (const lesson of lessons) for (const { key, text } of lessonClips(lesson)) if (text) clips.set(key, text);
   const have = new Set(
