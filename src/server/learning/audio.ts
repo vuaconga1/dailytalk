@@ -72,16 +72,27 @@ export function lessonClips(lesson: Lesson) {
   return [...lesson.dialogue.map((_, i) => lessonAudio(lesson, i)), ...lesson.vocabulary.map((_, i) => wordAudio(lesson, i))];
 }
 
-/** Whether every line / every word of a lesson already has a cached clip. */
-export async function lessonAudioStatus(lesson: Lesson): Promise<{ lines: boolean; words: boolean }> {
+export type LessonAudioStatus = {
+  lines: boolean;
+  words: boolean;
+  /** Public R2 URL per dialogue line / word; null when the clip is missing or stored in the DB. */
+  lineUrls: (string | null)[];
+  wordUrls: (string | null)[];
+};
+
+/** Whether every line / every word of a lesson already has a cached clip, plus direct R2 URLs. */
+export async function lessonAudioStatus(lesson: Lesson): Promise<LessonAudioStatus> {
   const lines = lesson.dialogue.map((_, i) => lessonAudio(lesson, i).key);
   const words = lesson.vocabulary.map((_, i) => wordAudio(lesson, i).key);
-  if (!lines.length && !words.length) return { lines: false, words: false };
-  const stored = await prisma.audioClip.findMany({ where: { key: { in: [...lines, ...words] } }, select: { key: true } });
-  const have = new Set(stored.map((c) => c.key));
+  if (!lines.length && !words.length) return { lines: false, words: false, lineUrls: [], wordUrls: [] };
+  const stored = await prisma.audioClip.findMany({ where: { key: { in: [...lines, ...words] } }, select: { key: true, r2Key: true } });
+  const byKey = new Map(stored.map((c) => [c.key, c.r2Key ? publicUrl(c.r2Key) : null]));
+  const urlOf = (k: string) => byKey.get(k) ?? null;
   return {
-    lines: lines.length > 0 && lines.every((k) => have.has(k)),
-    words: words.length > 0 && words.every((k) => have.has(k)),
+    lines: lines.length > 0 && lines.every((k) => byKey.has(k)),
+    words: words.length > 0 && words.every((k) => byKey.has(k)),
+    lineUrls: lines.map(urlOf),
+    wordUrls: words.map(urlOf),
   };
 }
 

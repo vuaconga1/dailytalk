@@ -14,7 +14,7 @@ const DAILY_SECONDS = 180;
 const STEPS = ["01. Từ & mẫu câu", "02. Shadowing", "03. Hội thoại AI", "04. Tổng kết"];
 
 /** Which parts of the lesson have cached MP3 clips; the rest use the browser voice. */
-export type LessonAudio = { lines: boolean; words: boolean };
+export type LessonAudio = { lines: boolean; words: boolean; lineUrls: (string | null)[]; wordUrls: (string | null)[] };
 
 type Props = { initial: AttemptView; week: WeekReview; serverTime: number; demo: boolean; audio: LessonAudio; contextLabel: string };
 
@@ -166,7 +166,7 @@ export function LessonPlayer({ initial, week, serverTime, demo, audio, contextLa
       <div className="rounded-2xl border border-[#e2e8f4] bg-white p-6 md:p-8 shadow-xs">
         {step === 0 && <WordsStep lesson={lesson} audio={audio} media={media} onNext={() => checkpoint("words")} onError={notify} />}
         {step === 1 && (
-          <ShadowStep lesson={lesson} serverAudio={audio.lines} media={media} onNext={() => checkpoint("shadow")} onError={notify} />
+          <ShadowStep lesson={lesson} serverAudio={audio.lines} lineUrls={audio.lineUrls} media={media} onNext={() => checkpoint("shadow")} onError={notify} />
         )}
         {step === 2 && (
           <PracticeStep

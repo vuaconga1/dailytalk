@@ -23,11 +23,13 @@ export function WordsStep({ lesson, audio, media, onNext, onError }: Props) {
   const clip = (query: string) => `/api/audio?lesson=${encodeURIComponent(lesson.id)}&${query}`;
   const sayWord = (v: Word) => {
     const i = lesson.vocabulary.indexOf(v);
-    return audio.words && i >= 0 ? run(() => media.playUrl(clip(`word=${i}`), 0.9)) : say(v.word);
+    const url = audio.wordUrls[i] ?? clip(`word=${i}`);
+    return audio.words && i >= 0 ? run(() => media.playUrl(url, 0.9)) : say(v.word);
   };
   const sayFrame = (frame: string, example: string | undefined) => {
     const line = example ? lesson.dialogue.indexOf(example) : -1;
-    return audio.lines && line >= 0 ? run(() => media.playUrl(clip(`line=${line}`), 0.9)) : say(example ?? frame.replaceAll("…", ""));
+    const url = audio.lineUrls[line] ?? clip(`line=${line}`);
+    return audio.lines && line >= 0 ? run(() => media.playUrl(url, 0.9)) : say(example ?? frame.replaceAll("…", ""));
   };
   const recap = lesson.recap;
   const range = recap?.days.length ? `ngày ${recap.days[0].day}–${recap.days[recap.days.length - 1].day}` : "";

@@ -16,12 +16,14 @@ export interface UseKaraokeProps {
   lines: string[];
   /** Every line has a cached MP3 clip; otherwise the browser voice reads it. */
   serverAudio: boolean;
+  /** Direct R2 URL per line; null falls back to `/api/audio`. */
+  lineUrls?: (string | null)[];
   rate: number;
   media: ReturnType<typeof useMedia>;
   onError?: (message: string) => void;
 }
 
-export function useKaraoke({ lessonId, lines, serverAudio, rate, media, onError }: UseKaraokeProps) {
+export function useKaraoke({ lessonId, lines, serverAudio, lineUrls, rate, media, onError }: UseKaraokeProps) {
   const [lineIndex, setLineIndex] = useState(-1);
   const [wordIndex, setWordIndex] = useState(-1);
   const [playing, setPlaying] = useState(false);
@@ -112,7 +114,7 @@ export function useKaraoke({ lessonId, lines, serverAudio, rate, media, onError 
       currentTimingsRef.current = [];
       currentAudioRef.current = null;
       onError?.("Đang chuẩn bị audio…");
-      const url = `/api/audio?lesson=${encodeURIComponent(lessonId)}&line=${targetLine}`;
+      const url = lineUrls?.[targetLine] ?? `/api/audio?lesson=${encodeURIComponent(lessonId)}&line=${targetLine}`;
       let seeked = false;
       let completedNaturally = false;
 
@@ -162,7 +164,7 @@ export function useKaraoke({ lessonId, lines, serverAudio, rate, media, onError 
 
       return true;
     },
-    [serverAudio, lessonId, lines, media, onError],
+    [serverAudio, lessonId, lineUrls, lines, media, onError],
   );
 
   const playLine = useCallback(

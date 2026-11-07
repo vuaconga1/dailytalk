@@ -11,12 +11,13 @@ import type { useMedia } from "./use-media";
 type Props = {
   lesson: Lesson;
   serverAudio: boolean;
+  lineUrls: (string | null)[];
   media: ReturnType<typeof useMedia>;
   onNext: () => Promise<void>;
   onError: (message: string) => void;
 };
 
-export function ShadowStep({ lesson, serverAudio, media, onNext, onError }: Props) {
+export function ShadowStep({ lesson, serverAudio, lineUrls, media, onNext, onError }: Props) {
   const { pending, run } = useAction(onError);
   const [rate, setRate] = useState(1);
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
@@ -29,6 +30,7 @@ export function ShadowStep({ lesson, serverAudio, media, onNext, onError }: Prop
     lessonId: lesson.id,
     lines: lesson.dialogue,
     serverAudio,
+    lineUrls,
     rate,
     media,
     onError,
