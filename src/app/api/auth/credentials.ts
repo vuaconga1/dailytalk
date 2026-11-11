@@ -10,7 +10,7 @@ export function readCredentials(body: Record<string, unknown>, minPassword: numb
     email.length > 200 ||
     !email.includes("@")
   ) {
-    throw new Problem("Email hợp lệ và mật khẩu từ 8 đến 128 ký tự.");
+    throw new Problem(`Email hợp lệ và mật khẩu từ ${Math.max(minPassword, 1)} đến 128 ký tự.`);
   }
   return { email: email.trim().toLowerCase(), password };
 }

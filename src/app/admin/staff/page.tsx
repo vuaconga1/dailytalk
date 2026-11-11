@@ -1,5 +1,5 @@
 import { ApiForm } from "@/components/admin/api-form";
-import { ROLE_LABELS, STAFF_ROLES } from "@/domain/access";
+import { ADMIN_MIN_PASSWORD, ROLE_LABELS, STAFF_ROLES } from "@/domain/access";
 import { staffList } from "@/server/admin";
 import { requireStaff } from "@/server/http/page-guards";
 
@@ -51,8 +51,8 @@ export default async function StaffPage() {
               <input id="email" name="email" type="email" required />
             </div>
             <div className="field">
-              <label htmlFor="password">Mật khẩu (≥ 8 ký tự)</label>
-              <input id="password" name="password" type="password" required minLength={8} />
+              <label htmlFor="password">Mật khẩu (≥ {ADMIN_MIN_PASSWORD} ký tự)</label>
+              <input id="password" name="password" type="password" required minLength={ADMIN_MIN_PASSWORD} />
             </div>
             <div className="field">
               <label htmlFor="role">Vai trò</label>

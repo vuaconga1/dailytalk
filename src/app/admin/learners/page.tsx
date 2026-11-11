@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ApiForm } from "@/components/admin/api-form";
+import { ADMIN_MIN_PASSWORD, can, DEFAULT_PACKAGE_DAYS } from "@/domain/access";
 import { isLearnerFilter, LEARNER_FILTERS, listLearners } from "@/server/admin";
 import { isCurrentProfile, profileLabels } from "@/domain/profile";
 import { levelInfo } from "@/domain/profile-options";
@@ -10,7 +12,7 @@ const STATUS_LABELS = { LEAD: "Chờ kích hoạt", ACTIVE: "Đang học", PAUSE
 type Props = { searchParams: Promise<{ filter?: string; q?: string }> };
 
 export default async function LearnersPage({ searchParams }: Props) {
-  await requireStaff();
+  const staff = await requireStaff();
   const params = await searchParams;
   const filter = isLearnerFilter(params.filter) ? params.filter : "all";
   const q = params.q ?? "";
@@ -20,6 +22,44 @@ export default async function LearnersPage({ searchParams }: Props) {
     <section>
       <div className="eyebrow">HỌC VIÊN</div>
       <h1 className="page-title mb-6">Danh sách học viên.</h1>
+
+      {can(staff.role, "createAccounts") && (
+        <details className="card mb-6">
+          <summary className="cursor-pointer text-lg font-bold">+ Tạo tài khoản học viên</summary>
+          <ApiForm
+            endpoint="/api/admin/learners"
+            submitLabel="Tạo tài khoản"
+            successText="Đã tạo tài khoản."
+            resetOnSuccess
+            className="mt-4 grid gap-x-4 sm:grid-cols-2"
+          >
+            <div className="field">
+              <label htmlFor="new-name">Họ tên</label>
+              <input id="new-name" name="name" required maxLength={80} />
+            </div>
+            <div className="field">
+              <label htmlFor="new-email">Email</label>
+              <input id="new-email" name="email" type="email" required />
+            </div>
+            <div className="field">
+              <label htmlFor="new-password">Mật khẩu (≥ {ADMIN_MIN_PASSWORD} ký tự)</label>
+              <input id="new-password" name="password" type="text" required minLength={ADMIN_MIN_PASSWORD} autoComplete="off" />
+            </div>
+            <div className="field">
+              <label htmlFor="new-phone">Số điện thoại (không bắt buộc)</label>
+              <input id="new-phone" name="phone" maxLength={30} />
+            </div>
+            <div className="field">
+              <label htmlFor="new-days">Số ngày gói</label>
+              <input id="new-days" name="days" type="number" min={1} max={366} defaultValue={DEFAULT_PACKAGE_DAYS} required />
+            </div>
+            <label className="mb-4 flex items-center gap-2 self-end text-sm">
+              <input type="checkbox" name="activate" defaultChecked />
+              Kích hoạt gói ngay
+            </label>
+          </ApiForm>
+        </details>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {Object.entries(LEARNER_FILTERS).map(([key, label]) => (

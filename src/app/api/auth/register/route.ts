@@ -3,12 +3,13 @@ import { createSession, hashPassword } from "@/server/auth";
 import { Problem } from "@/lib/errors";
 import { prisma } from "@/server/db";
 import { throttleAuth } from "@/server/throttle";
+import { MIN_PASSWORD } from "@/domain/access";
 import { readCredentials } from "../credentials";
 
 export const POST = route(async (req) => {
   throttleAuth(clientIp(req));
   const body = await readJson(req);
-  const { email, password } = readCredentials(body, 8);
+  const { email, password } = readCredentials(body, MIN_PASSWORD);
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (name.length < 1 || name.length > 80) throw new Problem("Vui lòng nhập tên, tối đa 80 ký tự.");
   const passwordHash = await hashPassword(password);
