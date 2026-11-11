@@ -10,8 +10,8 @@ export async function transcribe(audio: Buffer, mime: string, lesson?: Lesson): 
   if (isDemo) throw new AIError("Ghi âm để AI nhận dạng cần cấu hình API; demo hỗ trợ nhập câu.");
   const ext = mime.includes("mp4") ? "mp4" : mime.includes("webm") ? "webm" : mime.includes("ogg") ? "ogg" : "wav";
   const file = await toFile(audio, `recording.${ext}`, { type: mime });
-  const result = await call(() =>
-    openai().audio.transcriptions.create({
+  const result = await call(async () =>
+    (await openai()).audio.transcriptions.create({
       file,
       model: aiConfig.stt,
       language: "en",
@@ -23,8 +23,8 @@ export async function transcribe(audio: Buffer, mime: string, lesson?: Lesson): 
 
 export async function speech(input: string): Promise<Buffer> {
   if (!canGenerateSpeech) throw new AIError("Chưa cấu hình dịch vụ giọng đọc (TTS).");
-  const res = await call(() =>
-    ttsClient().audio.speech.create({
+  const res = await call(async () =>
+    (await ttsClient()).audio.speech.create({
       model: ttsConfig.model,
       voice: ttsConfig.voice,
       input,

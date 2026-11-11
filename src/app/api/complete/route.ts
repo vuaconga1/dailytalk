@@ -1,8 +1,8 @@
 import { authedRoute, json, readJson } from "@/server/http/api";
 import { FINISH_GRACE_MS, LAST_STUDY_DAY } from "@/domain/access";
-import { summarize } from "@/server/ai/coach";
-import { aiConfig } from "@/server/ai/config";
-import { Problem } from "@/lib/errors";
+import { demoSummary, summarize } from "@/server/ai/coach";
+import { aiConfig, isDemo } from "@/server/ai/config";
+import { AIError, Problem } from "@/lib/errors";
 import { normalizeLesson } from "@/domain/content";
 import { framesUsed } from "@/domain/frames";
 import { updateWorkingLevel } from "@/server/learning/lessons";
@@ -14,7 +14,8 @@ import { vnDate } from "@/lib/time";
 import type { Summary, Turn } from "@/domain/types";
 
 export const POST = authedRoute(async (req, user) => {
-  const attempt = await ownedAttempt(user, (await readJson(req)).attempt_id, false);
+  const body = await readJson(req);
+  const attempt = await ownedAttempt(user, body.attempt_id, false);
   if (attempt.summary) return json(attempt.summary);
   if (!attempt.wordsDone || !attempt.shadowDone) throw new Problem("Hãy hoàn thành phần từ vựng và shadowing trước.");
   const practice = attempt.practice;
@@ -25,13 +26,23 @@ export const POST = authedRoute(async (req, user) => {
   if (!lockedAt) throw new Problem("Đang xử lý lượt nói. Hãy thử lại sau.", 409);
   try {
     const turns = (await prisma.practice.findUniqueOrThrow({ where: { id: practice.id } })).turns as Turn[];
-    await reserveProviderCall(user.id, "summary");
     const lesson = normalizeLesson(attempt.lesson);
-    const [base, usage] = await summarize(user.profile, lesson, turns);
     const said = turns.filter((t) => t.role === "user").map((t) => t.text);
+    let aiOff = isDemo || body.ai_off === true;
+    let base: Awaited<ReturnType<typeof summarize>>[0] | null = null;
+    let usage = {};
+    if (!aiOff) {
+      try {
+        await reserveProviderCall(user.id, "summary");
+        [base, usage] = await summarize(user.profile, lesson, turns);
+      } catch (error) {
+        if (!(error instanceof AIError) && !(error instanceof Problem)) throw error;
+        aiOff = true;
+      }
+    }
     const summary: Summary = {
-      ...base,
-      mode: aiConfig.mode,
+      ...(base ?? demoSummary(lesson, said)),
+      mode: aiOff ? "demo" : aiConfig.mode,
       frames_used: lesson.frames.filter((_, i) => framesUsed(lesson.frames, said)[i]),
       turn_count: said.length,
       voice_turns: turns.filter((t) => t.input_mode === "voice").length,
@@ -42,7 +53,7 @@ export const POST = authedRoute(async (req, user) => {
       data: { completed: true, summary, localDate: vnDate() },
     });
     await finishStudy(user.id, attempt.id);
-    await logUsage(user.id, "summary", usage);
+    if (!aiOff) await logUsage(user.id, "summary", usage);
     await updateWorkingLevel(user.id, user.profile);
     if (attempt.day >= LAST_STUDY_DAY && !OPEN_ALL_DAYS) {
       await prisma.user.updateMany({

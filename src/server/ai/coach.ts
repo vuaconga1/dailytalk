@@ -10,22 +10,25 @@ type BaseSummary = Omit<Summary, "mode" | "frames_used" | "turn_count" | "voice_
 const GOAL_STATUSES: GoalStatus[] = ["achieved", "needs_review", "insufficient_evidence"];
 const LEVEL_SIGNALS: LevelSignal[] = ["below", "match", "above"];
 
-export async function reply(profile: LearnerProfile, lesson: Lesson, turns: Turn[], maxTurns: number): Promise<[string, Usage]> {
+/** Rule-based coach: follows the counterpart's lines of the lesson dialogue, then asks for missing frames. */
+export function scriptedReply(lesson: Lesson, turns: Turn[]): string {
   const said = turns.filter((t) => t.role === "user").map((t) => t.text);
   const used = framesUsed(lesson.frames, said);
   const unused = lesson.frames.filter((_, i) => !used[i]);
-  if (isDemo) {
-    // The coach follows the counterpart's lines of the shadowing dialogue, then asks for missing frames.
-    const follow = lesson.dialogue.filter((_, i) => i % 2 === 0).slice(1);
-    const n = said.length;
-    const line =
-      n <= follow.length
-        ? `${["Nice!", "Great.", "I see."][(n - 1) % 3]} ${follow[n - 1]}`
-        : unused.length
-          ? `Well done. Now try today’s pattern: “${unused[0]}”. Can you make your own sentence?`
-          : "Excellent! You used all four patterns today. You can finish the session to see your feedback.";
-    return [line, {}];
-  }
+  const follow = lesson.dialogue.filter((_, i) => i % 2 === 0).slice(1);
+  const n = said.length;
+  return n <= follow.length
+    ? `${["Nice!", "Great.", "I see."][(n - 1) % 3]} ${follow[n - 1]}`
+    : unused.length
+      ? `Well done. Now try today’s pattern: “${unused[0]}”. Can you make your own sentence?`
+      : "Excellent! You used all four patterns today. You can finish the session to see your feedback.";
+}
+
+export async function reply(profile: LearnerProfile, lesson: Lesson, turns: Turn[], maxTurns: number): Promise<[string, Usage]> {
+  if (isDemo) return [scriptedReply(lesson, turns), {}];
+  const said = turns.filter((t) => t.role === "user").map((t) => t.text);
+  const used = framesUsed(lesson.frames, said);
+  const unused = lesson.frames.filter((_, i) => !used[i]);
   const { title, situation, level, frames, vocabulary, roleplay } = lesson;
   const [out, usage] = await text(
     COACH_PROMPT,
@@ -42,7 +45,7 @@ export async function reply(profile: LearnerProfile, lesson: Lesson, turns: Turn
   return [(out as string).trim(), usage];
 }
 
-function demoSummary(lesson: Lesson, utterances: string[]): BaseSummary {
+export function demoSummary(lesson: Lesson, utterances: string[]): BaseSummary {
   if (!utterances.length) {
     return {
       overview: "Bạn chưa gửi câu trả lời nào trong phiên hội thoại hôm nay.",

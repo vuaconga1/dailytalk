@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/client/api";
+import { AI_UNAVAILABLE } from "@/lib/errors";
 import type { AttemptView, PracticeView, Summary, Turn, WeekReview } from "@/domain/types";
 import { PracticeStep } from "./practice-step";
 import { ShadowStep } from "./shadow-step";
@@ -31,6 +32,8 @@ export function LessonPlayer({ initial, week, serverTime, demo, audio, contextLa
   const [mounted, setMounted] = useState(false);
   const [, setTick] = useState(0);
   const [toast, setToast] = useState("");
+  /** The AI failed in this session; scripted replies and browser speech recognition until a new session starts. */
+  const [aiOff, setAiOff] = useState(false);
   const offsetRef = useRef(0);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -76,28 +79,36 @@ export function LessonPlayer({ initial, week, serverTime, demo, audio, contextLa
     goTo(stage === "words" ? 1 : 2);
   }
 
+  const disableAi = useCallback(() => {
+    setAiOff(true);
+    notify(AI_UNAVAILABLE);
+  }, [notify]);
+
   async function startPractice() {
     const r = await api<{ practice: PracticeView; serverTime: number }>("/api/practice/start", { attempt_id: attempt.id });
     offsetRef.current = r.serverTime - Date.now();
     setPractice(r.practice);
+    setAiOff(false);
     setAttempt((a) => (a.completed ? { ...a, completed: false, summary: null } : a));
   }
 
   async function sendTurn(text: string) {
     if (!practice) return;
-    const r = await api<{ turns: Turn[]; serverTime: number }>("/api/practice/turn", {
+    const r = await api<{ turns: Turn[]; ai_off: boolean; serverTime: number }>("/api/practice/turn", {
       session_id: practice.id,
       text,
       input_mode: "voice",
-      record_only: true,
+      ai_off: aiOff,
     });
     offsetRef.current = r.serverTime - Date.now();
     setPractice((p) => (p ? { ...p, turns: r.turns } : p));
+    if (r.ai_off && !demo && !aiOff) disableAi();
   }
 
   async function finish() {
     media.stopAll();
-    const summary = await api<Summary>("/api/complete", { attempt_id: attempt.id });
+    const summary = await api<Summary>("/api/complete", { attempt_id: attempt.id, ai_off: aiOff });
+    if (summary.mode === "demo" && !demo && !aiOff) disableAi();
     setAttempt((a) => ({ ...a, completed: true, summary }));
     setPractice((p) => (p ? { ...p, ended: true } : p));
     goTo(3);
@@ -174,8 +185,9 @@ export function LessonPlayer({ initial, week, serverTime, demo, audio, contextLa
             practice={practice}
             expired={Boolean(practice && left <= 0)}
             remaining={remaining}
-            demo={demo}
+            demo={demo || aiOff}
             media={media}
+            onAiFail={disableAi}
             onStart={startPractice}
             onSend={sendTurn}
             onFinish={finish}

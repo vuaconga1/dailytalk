@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { api, errorMessage } from "@/client/api";
 import { framesUsed } from "@/domain/frames";
+import { AI_UNAVAILABLE } from "@/lib/errors";
 import type { Lesson, PracticeView } from "@/domain/types";
 import { useAction } from "./use-action";
 import { speechRecognition, type useMedia } from "./use-media";
@@ -14,13 +15,14 @@ type Props = {
   remaining: () => number;
   demo: boolean;
   media: ReturnType<typeof useMedia>;
+  onAiFail: () => void;
   onStart: () => Promise<void>;
   onSend: (text: string) => Promise<void>;
   onFinish: () => Promise<void>;
   onError: (message: string) => void;
 };
 
-export function PracticeStep({ lesson, practice, expired, remaining, demo, media, onStart, onSend, onFinish, onError }: Props) {
+export function PracticeStep({ lesson, practice, expired, remaining, demo, media, onAiFail, onStart, onSend, onFinish, onError }: Props) {
   const { pending, run } = useAction(onError);
   const [status, setStatus] = useState("");
   const [draft, setDraft] = useState("");
@@ -32,6 +34,7 @@ export function PracticeStep({ lesson, practice, expired, remaining, demo, media
   const recording = media.recording === "voice";
   const turns = practice?.turns ?? [];
   const said = turns.filter((t) => t.role === "user");
+  const shown = turns.slice(1);
   const opening = turns.find((t) => t.role === "assistant")?.text ?? lesson.roleplay.opening;
   const used = framesUsed(
     lesson.frames,
@@ -47,7 +50,7 @@ export function PracticeStep({ lesson, practice, expired, remaining, demo, media
   }, [ended]);
   useEffect(() => {
     boxRef.current?.scrollTo({ top: boxRef.current.scrollHeight });
-  }, [said.length, draft]);
+  }, [turns.length, draft]);
 
   async function save(text: string) {
     const value = text.trim();
@@ -76,8 +79,9 @@ export function PracticeStep({ lesson, practice, expired, remaining, demo, media
         headers: { "Content-Type": blob.type.split(";")[0], "X-Practice-Id": practice.id },
       });
       await save(r.text);
-    } catch (e) {
-      setStatus(errorMessage(e));
+    } catch {
+      onAiFail();
+      setStatus(`${AI_UNAVAILABLE} Giữ nút và nói lại để chuyển sang chế độ trò chuyện cơ bản.`);
       setBusy(false);
     }
   }
@@ -89,9 +93,11 @@ export function PracticeStep({ lesson, practice, expired, remaining, demo, media
     try {
       if (demo) {
         recognizingRef.current = true;
-        media.toggleRecognition(setDraft, setStatus, (text) => {
+        media.toggleRecognition(setDraft, setStatus, (text, failed) => {
           recognizingRef.current = false;
-          void save(text);
+          holdingRef.current = false;
+          if (failed) setDraft("");
+          else void save(text);
         });
       } else {
         await media.startRecording("voice", (blob) => void transcribe(blob), remaining() * 1000);
@@ -170,12 +176,18 @@ export function PracticeStep({ lesson, practice, expired, remaining, demo, media
             className="my-4 flex min-h-[160px] max-h-[390px] flex-col gap-3 overflow-auto rounded-xl bg-surface p-4"
             aria-live="polite"
           >
-            {said.length === 0 && !draft && <p className="m-auto text-sm text-muted">Nội dung bạn nói sẽ hiện ở đây.</p>}
-            {said.map((t, i) => (
-              <p key={i} className="min-w-0 self-end rounded-[14px_14px_3px_14px] bg-[#dff1eb] px-[18px] py-3 leading-[1.55]">
-                {t.text}
-              </p>
-            ))}
+            {shown.length === 0 && !draft && <p className="m-auto text-sm text-muted">Nội dung bạn nói sẽ hiện ở đây.</p>}
+            {shown.map((t, i) =>
+              t.role === "user" ? (
+                <p key={i} className="min-w-0 self-end rounded-[14px_14px_3px_14px] bg-[#dff1eb] px-[18px] py-3 leading-[1.55]">
+                  {t.text}
+                </p>
+              ) : (
+                <p key={i} className="min-w-0 self-start rounded-[14px_14px_14px_3px] border border-line bg-white px-[18px] py-3 leading-[1.55]">
+                  {t.text}
+                </p>
+              ),
+            )}
             {draft && <p className="min-w-0 self-end rounded-[14px_14px_3px_14px] bg-[#dff1eb]/60 px-[18px] py-3 italic">{draft}</p>}
           </div>
 

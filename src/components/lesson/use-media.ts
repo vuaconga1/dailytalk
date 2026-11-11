@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type SpeechRecognitionLike = {
   lang: string;
+  continuous: boolean;
   interimResults: boolean;
   onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
   onerror: ((e: { error: string }) => void) | null;
@@ -27,6 +28,26 @@ const MAX_RECORD_MS = 45_000;
 const MAX_RECORD_BYTES = 3_800_000;
 const PREFERRED_TYPES = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm"];
 
+function microphoneError(e: unknown): string {
+  const name = e instanceof DOMException ? e.name : "";
+  if (name === "NotFoundError" || name === "OverconstrainedError")
+    return "Không tìm thấy micro. Hãy cắm micro/tai nghe và kiểm tra thiết bị đầu vào trong cài đặt âm thanh của máy.";
+  if (name === "NotAllowedError" || name === "SecurityError")
+    return "Micro đang bị chặn. Bấm biểu tượng bên trái thanh địa chỉ, cho phép Micro rồi thử lại.";
+  if (name === "NotReadableError" || name === "AbortError")
+    return "Micro đang bị ứng dụng khác sử dụng hoặc bị lỗi. Hãy đóng ứng dụng đó rồi thử lại.";
+  return "Không mở được micro. Hãy thử lại.";
+}
+
+function recognitionError(error: string): string {
+  if (error === "not-allowed")
+    return "Micro đang bị chặn. Bấm biểu tượng micro trên thanh địa chỉ, chọn Cho phép rồi thử lại.";
+  if (error === "audio-capture") return "Không tìm thấy micro. Kiểm tra micro đã cắm và được chọn trong hệ thống.";
+  if (error === "network" || error === "service-not-allowed")
+    return "Trình duyệt này không có dịch vụ nhận dạng giọng nói. Hãy dùng Google Chrome trên máy tính hoặc Android.";
+  return "Chưa nghe rõ. Hãy thử lại.";
+}
+
 export type RecordingKind = "shadow" | "voice";
 
 /** Playback, microphone recording and browser speech recognition, all stopped on unmount. */
@@ -37,6 +58,7 @@ export function useMedia() {
   const speechFinishRef = useRef<(() => void) | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recognizerRef = useRef<SpeechRecognitionLike | null>(null);
+  const recognitionStoppedRef = useRef(false);
   const cancelStartRef = useRef(false);
   const [recording, setRecording] = useState<RecordingKind | null>(null);
 
@@ -58,6 +80,7 @@ export function useMedia() {
 
   const stopAll = useCallback(() => {
     stopSound();
+    recognitionStoppedRef.current = true;
     recognizerRef.current?.abort();
     recognizerRef.current = null;
     if (recorderRef.current?.state === "recording") recorderRef.current.stop();
@@ -241,7 +264,9 @@ export function useMedia() {
       }
       stopSound();
       cancelStartRef.current = false;
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch((e: unknown) => {
+        throw new Error(microphoneError(e));
+      });
       if (cancelStartRef.current) {
         stream.getTracks().forEach((t) => t.stop());
         return;
@@ -284,10 +309,18 @@ export function useMedia() {
     [startRecording, stopRecording],
   );
 
-  /** Browser speech-to-text (demo mode); streams interim text through `onText`. */
+  /**
+   * Browser speech-to-text (demo mode); streams interim text through `onText`.
+   * Keeps listening across pauses until stopped; `onEnd` gets `failed` when the browser reported an error.
+   */
   const toggleRecognition = useCallback(
-    (onText: (text: string) => void, onStatus: (status: string) => void, onEnd?: (text: string) => void) => {
+    (
+      onText: (text: string) => void,
+      onStatus: (status: string) => void,
+      onEnd?: (text: string, failed: boolean) => void,
+    ) => {
       if (recognizerRef.current) {
+        recognitionStoppedRef.current = true;
         recognizerRef.current.stop();
         return;
       }
@@ -296,23 +329,37 @@ export function useMedia() {
       stopSound();
       const recognizer = new SR();
       recognizer.lang = "en-US";
+      recognizer.continuous = true;
       recognizer.interimResults = true;
+      recognitionStoppedRef.current = false;
+      let before = "";
       let heard = "";
+      let failed = false;
       recognizer.onresult = (e) => {
         const text = Array.from(e.results, (r) => r[0].transcript)
           .join(" ")
           .trim();
         if (text) {
-          heard = text;
-          onText(text);
+          heard = `${before} ${text}`.trim();
+          onText(heard);
         }
       };
-      recognizer.onerror = (e) =>
-        onStatus(e.error === "not-allowed" ? "Hãy cho phép truy cập micro rồi thử lại." : "Chưa nghe rõ. Hãy thử lại.");
+      recognizer.onerror = (e) => {
+        if (e.error === "no-speech" || e.error === "aborted") return;
+        failed = true;
+        onStatus(recognitionError(e.error));
+      };
       recognizer.onend = () => {
+        if (!recognitionStoppedRef.current && !failed) {
+          before = heard;
+          try {
+            recognizer.start();
+            return;
+          } catch {}
+        }
         recognizerRef.current = null;
         setRecording(null);
-        if (onEnd) onEnd(heard);
+        if (onEnd) onEnd(heard, failed);
         else if (heard) onStatus("Đã nhận dạng. Kiểm tra hoặc sửa, rồi bấm Gửi câu trả lời.");
       };
       recognizerRef.current = recognizer;

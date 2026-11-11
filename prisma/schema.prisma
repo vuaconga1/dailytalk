@@ -199,6 +199,13 @@ model ZaloLinkCode {
   expiresAt DateTime
 }
 
+/// Settings editable from the admin console; they override the matching .env value.
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 /// OA access/refresh tokens. Zalo rotates the refresh token on every refresh.
 model ZaloToken {
   id           String   @id @default("oa")

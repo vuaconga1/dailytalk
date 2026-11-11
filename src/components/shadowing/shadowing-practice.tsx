@@ -407,8 +407,8 @@ export function ShadowingPractice({ exercise, catalog }: { exercise: PublicShado
     <div className="grid gap-5 pb-32 xl:grid-cols-[230px_minmax(0,1fr)] lg:pb-0">
       <ShadowingCatalog items={catalog} current={exercise.slug} />
 
-      <div className="grid min-w-0 items-start gap-5 lg:grid-cols-12">
-        <div className="grid min-w-0 gap-5 lg:col-span-7">
+      <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,1fr)] xl:grid-cols-[minmax(0,1.4fr)_minmax(340px,1fr)]">
+        <div className="flex min-w-0 flex-col gap-5">
           <VideoPanel player={player} title={exercise.title} level={exercise.level} duration={duration} cue={cue ?? null} locked={recordingNow} />
 
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -446,7 +446,7 @@ export function ShadowingPractice({ exercise, catalog }: { exercise: PublicShado
             )}
           </div>
 
-          <section className="rounded-2xl border border-line bg-white p-4 shadow-[0_4px_20px_-4px_rgba(20,40,90,0.05)] sm:p-5">
+          <section className="min-w-0 rounded-2xl border border-line bg-white p-4 shadow-[0_4px_20px_-4px_rgba(20,40,90,0.05)] sm:p-5">
             <div className="mb-4 flex items-center gap-3">
               <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-700">
                 <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -555,35 +555,37 @@ export function ShadowingPractice({ exercise, catalog }: { exercise: PublicShado
           </section>
         </div>
 
-        <div className="min-w-0 lg:sticky lg:top-20 lg:col-span-5">
-          <TranscriptPanel
-            lines={lines}
-            cues={cues}
-            annotations={exercise.annotations}
-            words={totalWords}
-            index={index}
-            player={player}
-            scores={scores ?? {}}
-            results={results}
-            estimated={!exercise.cues}
-            showIpa={showIpa}
-            onToggleIpa={() => {
-              localStorage.setItem(IPA_KEY, showIpa ? "0" : "1");
-              setShowIpa(!showIpa);
-            }}
-            fontSize={fontSize}
-            onFontSize={setFontSize}
-            locked={busy}
-            recording={phase === "recording"}
-            canRecord={Boolean(supported) && (phase === "idle" || phase === "recording" || (mode === "full" && phase === "recorded"))}
-            onSelect={select}
-            onReplay={replay}
-            onToggleRecord={toggleRecord}
-            onPracticeWeak={practiceWeak}
-          />
+        <div className="min-w-0">
+          <div className="lg:sticky lg:top-20">
+            <TranscriptPanel
+              lines={lines}
+              cues={cues}
+              annotations={exercise.annotations}
+              words={totalWords}
+              index={index}
+              player={player}
+              scores={scores ?? {}}
+              results={results}
+              estimated={!exercise.cues}
+              showIpa={showIpa}
+              onToggleIpa={() => {
+                localStorage.setItem(IPA_KEY, showIpa ? "0" : "1");
+                setShowIpa(!showIpa);
+              }}
+              fontSize={fontSize}
+              onFontSize={setFontSize}
+              locked={busy}
+              recording={phase === "recording"}
+              canRecord={Boolean(supported) && (phase === "idle" || phase === "recording" || (mode === "full" && phase === "recorded"))}
+              onSelect={select}
+              onReplay={replay}
+              onToggleRecord={toggleRecord}
+              onPracticeWeak={practiceWeak}
+            />
+          </div>
         </div>
 
-        <div className="min-w-0 lg:col-span-12">
+        <div className="min-w-0 lg:col-span-2 [grid-column:1/-1]">
           <ShadowingHistory slug={exercise.slug} refreshKey={historyKey} onPlaySample={playSample} />
         </div>
       </div>

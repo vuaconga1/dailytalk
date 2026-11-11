@@ -1,6 +1,7 @@
 import { authedRoute, json, readJson } from "@/server/http/api";
-import { reply } from "@/server/ai/coach";
-import { Problem } from "@/lib/errors";
+import { reply, scriptedReply } from "@/server/ai/coach";
+import { isDemo } from "@/server/ai/config";
+import { AIError, Problem } from "@/lib/errors";
 import { MAX_TURNS, ownedAttempt, withPracticeLock } from "@/server/learning/practice";
 import { logUsage, reserveProviderCall } from "@/server/learning/usage";
 import { prisma } from "@/server/db";
@@ -13,6 +14,7 @@ export const POST = authedRoute(async (req, user) => {
   if (text.length < 1 || text.length > 1000) throw new Problem("Câu trả lời từ 1 đến 1.000 ký tự.");
   if (!user.profile) throw new Problem("Chưa có hồ sơ.");
   const profile = user.profile;
+  let aiOff = isDemo || body.ai_off === true;
 
   const turns = await withPracticeLock(user.id, body.session_id, async (practice) => {
     const turns = practice.turns as Turn[];
@@ -23,12 +25,22 @@ export const POST = authedRoute(async (req, user) => {
       return turns;
     }
     const lesson = normalizeLesson((await ownedAttempt(user, practice.attemptId)).lesson);
-    await reserveProviderCall(user.id, "conversation");
-    const [answer, usage] = await reply(profile, lesson, turns, MAX_TURNS);
+    let answer = "";
+    if (!aiOff) {
+      try {
+        await reserveProviderCall(user.id, "conversation");
+        const [line, usage] = await reply(profile, lesson, turns, MAX_TURNS);
+        answer = line;
+        await logUsage(user.id, "conversation", usage);
+      } catch (error) {
+        if (!(error instanceof AIError) && !(error instanceof Problem)) throw error;
+        aiOff = true;
+      }
+    }
+    if (aiOff) answer = scriptedReply(lesson, turns);
     turns.push({ role: "assistant", text: answer });
     await prisma.practice.update({ where: { id: practice.id }, data: { turns } });
-    await logUsage(user.id, "conversation", usage);
     return turns;
   });
-  return json({ turns, serverTime: Date.now() });
+  return json({ turns, ai_off: aiOff, serverTime: Date.now() });
 });

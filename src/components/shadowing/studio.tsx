@@ -17,8 +17,8 @@ export function SentenceCard(props: {
   onWordClick?: (seconds: number) => void;
 }) {
   return (
-    <div className="rounded-2xl border border-navy/10 bg-gradient-to-br from-navy-soft/70 to-white p-4 sm:p-5">
-      <div className="flex gap-3">
+    <div className="min-w-0 rounded-2xl border border-navy/10 bg-gradient-to-br from-navy-soft/70 to-white p-4 sm:p-5">
+      <div className="flex min-w-0 gap-3">
         <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-navy text-[11px] font-bold text-white">
           {String(props.index + 1).padStart(2, "0")}
         </span>

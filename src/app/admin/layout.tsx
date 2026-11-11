@@ -12,6 +12,7 @@ const LINKS: (AdminLink & { permission: Permission })[] = [
   { href: "/admin/shadowing", label: "Shadowing", icon: "◉", permission: "manageLessons" },
   { href: "/admin/notifications", label: "Tin nhắn Zalo", icon: "✉", permission: "viewNotifications" },
   { href: "/admin/staff", label: "Nhân sự", icon: "⚙", permission: "manageStaff" },
+  { href: "/admin/settings", label: "Cấu hình AI", icon: "✦", permission: "manageSettings" },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

@@ -1,4 +1,5 @@
 import { authedRoute, json, readJson } from "@/server/http/api";
+import { AUTO_ACTIVATE_ON_ONBOARD, DEFAULT_PACKAGE_DAYS } from "@/domain/access";
 import { classify } from "@/domain/classify";
 import { buildPlan } from "@/domain/curriculum";
 import { Prisma } from "@/generated/prisma/client";
@@ -18,7 +19,18 @@ export const POST = authedRoute(async (req, user) => {
   const classification = classify(input);
   const profile: LearnerProfile = { ...input, classification, working_level: classification.level };
   const plan = buildPlan(profile);
-  const data = { name, profile, plan, planSource: "curriculum" };
+  const now = new Date();
+  const activation =
+    AUTO_ACTIVATE_ON_ONBOARD && user.status === "LEAD" && !user.isDemo
+      ? {
+          status: "ACTIVE" as const,
+          packageName: `Gói ${DEFAULT_PACKAGE_DAYS} ngày`,
+          activatedAt: now,
+          accessEndsAt: new Date(now.getTime() + DEFAULT_PACKAGE_DAYS * 86_400_000),
+          lockAt: null,
+        }
+      : {};
+  const data = { name, profile, plan, planSource: "curriculum", ...activation };
   if (user.plan) {
     // Old-survey learner: their sessions used the retired lesson format, so the journey restarts.
     await prisma.$transaction([

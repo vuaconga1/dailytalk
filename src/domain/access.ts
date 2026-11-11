@@ -4,6 +4,8 @@ import type { SessionUser } from "@/server/auth";
 /** Days a not-yet-activated learner may study before a consultant activates them. */
 export const TRIAL_DAYS = 1;
 export const DEFAULT_PACKAGE_DAYS = 30;
+/** Temporary: activate a LEAD learner as soon as onboarding builds their plan. Set false to require staff activation again. */
+export const AUTO_ACTIVATE_ON_ONBOARD = true;
 
 export const ROLE_LABELS: Record<Role, string> = {
   LEARNER: "Học viên",
@@ -25,6 +27,7 @@ export const PERMISSIONS = {
   manageLessons: ["ACADEMIC", "ADMIN"],
   viewNotifications: ["CONSULTANT", "ADMIN"],
   manageStaff: ["ADMIN"],
+  manageSettings: ["ADMIN"],
   runJobs: ["ADMIN"],
 } satisfies Record<string, Role[]>;
 
