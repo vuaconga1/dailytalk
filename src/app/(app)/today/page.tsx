@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { StartLessonButton } from "@/components/lesson/start-lesson-button";
 import { getHistory } from "@/server/learning/history";
 import { getTodayAttempt } from "@/server/learning/lessons";
 import { requirePlan } from "@/server/http/page-guards";
@@ -90,13 +91,14 @@ export default async function TodayPage() {
             )}
 
             <div className="relative mt-7 flex flex-wrap items-center gap-4">
-              <Link
-                href="/lesson"
-                className="inline-flex items-center justify-center gap-2.5 rounded-xl bg-navy px-6 py-3.5 text-sm font-bold text-white shadow-sm transition-all duration-200 hover:bg-navy-light hover:-translate-y-0.5 hover:shadow-md active:scale-95"
+              <StartLessonButton
+                attemptId={attempt.id}
+                track={!attempt.completed && !attempt.locked}
+                className="inline-flex items-center justify-center gap-2.5 rounded-xl bg-navy px-6 py-3.5 text-sm font-bold text-white shadow-sm transition-all duration-200 hover:bg-navy-light hover:-translate-y-0.5 hover:shadow-md active:scale-95 disabled:opacity-70"
               >
                 {cta}
                 <span className="text-base">→</span>
-              </Link>
+              </StartLessonButton>
               <Link
                 href="/plan"
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-semibold text-navy shadow-xs transition-all hover:bg-slate-50"

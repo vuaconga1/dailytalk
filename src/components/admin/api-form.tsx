@@ -18,7 +18,7 @@ type Props = {
   children?: ReactNode;
 };
 
-/** Small staff form: fields → JSON body, shows the server's error or result, refreshes the page. */
+/** Small staff form: fields → JSON body, shows the server's error or result, refreshes the page (or follows `redirect`). */
 export function ApiForm({
   endpoint,
   method = "POST",
@@ -51,7 +51,8 @@ export function ApiForm({
       });
       setStatus({ ok: true, text: successText === "json" ? JSON.stringify(result, null, 2) : successText });
       if (resetOnSuccess) form.reset();
-      router.refresh();
+      if (typeof result.redirect === "string") router.push(result.redirect);
+      else router.refresh();
     } catch (err) {
       setStatus({ ok: false, text: errorMessage(err) });
     } finally {

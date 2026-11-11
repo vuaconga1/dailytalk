@@ -25,6 +25,16 @@ const LINKS = [
     ),
   },
   {
+    href: "/shadowing",
+    label: "Shadowing",
+    crumb: "Shadowing",
+    icon: (
+      <svg className="size-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+      </svg>
+    ),
+  },
+  {
     href: "/history",
     label: "Nhật ký",
     crumb: "Nhật ký",
@@ -48,16 +58,22 @@ const LINKS = [
 ];
 
 function isActive(pathname: string, href: string) {
-  return pathname === href || (href === "/today" && pathname.startsWith("/lesson"));
+  return (
+    pathname === href ||
+    (href === "/today" && pathname.startsWith("/lesson")) ||
+    (href === "/shadowing" && pathname.startsWith("/shadowing/"))
+  );
 }
 
-export function AppNav({ hasPlan, className = "" }: { hasPlan: boolean; className?: string }) {
+type NavProps = { hasPlan: boolean; showShadowing: boolean; className?: string };
+
+export function AppNav({ hasPlan, showShadowing, className = "" }: NavProps) {
   const pathname = usePathname();
   if (!hasPlan) return null;
 
   return (
     <nav aria-label="Điều hướng chính" className={`flex items-center gap-1 ${className}`}>
-      {LINKS.map((l) => {
+      {LINKS.filter((l) => showShadowing || l.href !== "/shadowing").map((l) => {
         const active = isActive(pathname, l.href);
         return (
           <Link
@@ -90,7 +106,7 @@ export function Crumb() {
   if (pathname.startsWith("/onboarding")) return null;
   const label = pathname.startsWith("/lesson")
     ? "Buổi học hôm nay"
-    : (LINKS.find((l) => l.href === pathname)?.crumb ?? "Khảo sát");
+    : (LINKS.find((l) => isActive(pathname, l.href))?.crumb ?? "Khảo sát");
 
   return (
     <div className="mb-6 flex items-center gap-2 text-xs md:text-sm text-slate-500 font-medium">

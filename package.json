@@ -24,6 +24,7 @@
     "@prisma/adapter-neon": "^7.10.1",
     "@prisma/client": "^7.10.1",
     "bcryptjs": "^3.0.3",
+    "cmu-pronouncing-dictionary": "^3.0.0",
     "dotenv": "^17.4.2",
     "next": "15.5.24",
     "openai": "^7.50.0",

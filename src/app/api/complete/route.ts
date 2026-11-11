@@ -7,6 +7,7 @@ import { normalizeLesson } from "@/domain/content";
 import { framesUsed } from "@/domain/frames";
 import { updateWorkingLevel } from "@/server/learning/lessons";
 import { lockForSummary, OPEN_ALL_DAYS, ownedAttempt, releaseLock } from "@/server/learning/practice";
+import { finishStudy } from "@/server/learning/study-time";
 import { logUsage, reserveProviderCall } from "@/server/learning/usage";
 import { prisma } from "@/server/db";
 import { vnDate } from "@/lib/time";
@@ -40,6 +41,7 @@ export const POST = authedRoute(async (req, user) => {
       where: { id: attempt.id },
       data: { completed: true, summary, localDate: vnDate() },
     });
+    await finishStudy(user.id, attempt.id);
     await logUsage(user.id, "summary", usage);
     await updateWorkingLevel(user.id, user.profile);
     if (attempt.day >= LAST_STUDY_DAY && !OPEN_ALL_DAYS) {

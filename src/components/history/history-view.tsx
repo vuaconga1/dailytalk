@@ -12,6 +12,9 @@ type Props = {
   history: HistoryItem[];
   weekReviews: WeekReview[];
   streak: number;
+  /** Study seconds per month ("YYYY-MM"). */
+  studySeconds: Record<string, number>;
+  currentMonth: string;
   userName?: string;
 };
 
@@ -25,7 +28,7 @@ function getWeekRange(weekNum: number): { fromDay: number; toDay: number; total:
   return { fromDay, toDay, total: toDay - fromDay + 1 };
 }
 
-export function HistoryView({ history, weekReviews, streak }: Props) {
+export function HistoryView({ history, weekReviews, streak, studySeconds, currentMonth }: Props) {
   // Filter States
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedWeek, setSelectedWeek] = useState<number | "all">("all");
@@ -215,6 +218,8 @@ export function HistoryView({ history, weekReviews, streak }: Props) {
             history={history}
             weekReviews={weekReviews}
             streak={streak}
+            studySeconds={studySeconds}
+            currentMonth={currentMonth}
             selectedMonth={selectedMonth}
             onSelectMonth={setSelectedMonth}
             monthOptions={monthOptions}

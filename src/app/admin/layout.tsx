@@ -9,6 +9,7 @@ const LINKS: (AdminLink & { permission: Permission })[] = [
   { href: "/admin", label: "Tổng quan", icon: "◈", permission: "viewLearners" },
   { href: "/admin/learners", label: "Học viên", icon: "◎", permission: "viewLearners" },
   { href: "/admin/lessons", label: "Ngân hàng bài", icon: "▦", permission: "manageLessons" },
+  { href: "/admin/shadowing", label: "Shadowing", icon: "◉", permission: "manageLessons" },
   { href: "/admin/notifications", label: "Tin nhắn Zalo", icon: "✉", permission: "viewNotifications" },
   { href: "/admin/staff", label: "Nhân sự", icon: "⚙", permission: "manageStaff" },
 ];

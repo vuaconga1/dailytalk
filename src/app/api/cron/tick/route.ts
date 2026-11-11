@@ -4,11 +4,12 @@ import { json, route } from "@/server/http/api";
 import { Problem } from "@/lib/errors";
 import { buildWeeklyReports, expireAccounts, lastWeekStart, runStudyJobs } from "@/server/jobs";
 import { weekStartOf } from "@/lib/time";
+import { purgeExpiredRecordings } from "@/server/shadowing/store";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const JOBS = ["expire", "study", "weekly"] as const;
+const JOBS = ["expire", "study", "weekly", "recordings"] as const;
 type Job = (typeof JOBS)[number];
 
 function digest(value: string) {
@@ -44,6 +45,7 @@ async function handler(req: NextRequest) {
     const weekStart = week ? weekStartOf(week) : lastWeekStart();
     out.weekly = { weekStart, created: await buildWeeklyReports(weekStart) };
   }
+  if (jobs.includes("recordings")) out.recordingsPurged = await purgeExpiredRecordings(true);
   return json({ ok: true, ms: Date.now() - started, ...out });
 }
 

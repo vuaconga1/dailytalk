@@ -28,44 +28,48 @@ enum AccountStatus {
 }
 
 model User {
-  id           String        @id @default(cuid())
-  email        String        @unique
-  name         String
-  passwordHash String
-  role         Role          @default(LEARNER)
-  status       AccountStatus @default(LEAD)
-  phone        String?
+  id            String        @id @default(cuid())
+  email         String        @unique
+  name          String
+  passwordHash  String
+  role          Role          @default(LEARNER)
+  status        AccountStatus @default(LEAD)
+  phone         String?
   /// Throwaway "Trải nghiệm demo" learner; email is <id>@demo.invalid.
-  isDemo       Boolean       @default(false)
+  isDemo        Boolean       @default(false)
   /// LearnerProfile (see src/domain/types.ts)
-  profile      Json?
+  profile       Json?
   /// Reference 30-day StudyPlan; the actual next lesson is re-chosen from results.
-  plan         Json?
-  planSource   String?
-  packageName  String?
-  activatedAt  DateTime?
-  accessEndsAt DateTime?
+  plan          Json?
+  planSource    String?
+  packageName   String?
+  activatedAt   DateTime?
+  accessEndsAt  DateTime?
   /// Hoàn thành ngày 30 + 24 giờ; từ thời điểm này tài khoản bị khóa cho đến khi được kích hoạt lại.
-  lockAt       DateTime?
+  lockAt        DateTime?
   /// Phiên đăng nhập hợp lệ duy nhất; cookie mang phiên khác sẽ bị đăng xuất.
   sessionId     String?
   /// IP của phiên hiện tại.
   sessionIp     String?
   /// Lần cuối phiên hiện tại hoạt động (cập nhật tối đa mỗi phút).
   sessionSeenAt DateTime?
-  consultantId String?
-  consultant   User?         @relation("Consultant", fields: [consultantId], references: [id], onDelete: SetNull)
-  createdAt    DateTime      @default(now())
+  /// Deprecated (heartbeat study timer); kept so schema pushes stay non-destructive.
+  studyPingAt   DateTime?
+  consultantId  String?
+  consultant    User?         @relation("Consultant", fields: [consultantId], references: [id], onDelete: SetNull)
+  createdAt     DateTime      @default(now())
 
-  learners      User[]         @relation("Consultant")
-  attempts      Attempt[]
-  practices     Practice[]
-  usages        Usage[]
-  zaloLink      ZaloLink?
-  notifications Notification[]
-  weeklyReports WeeklyReport[]
-  notesAbout    StaffNote[]    @relation("NoteLearner")
-  notesWritten  StaffNote[]    @relation("NoteAuthor")
+  learners          User[]             @relation("Consultant")
+  attempts          Attempt[]
+  practices         Practice[]
+  usages            Usage[]
+  studyTimes        StudyTime[]
+  shadowingAttempts ShadowingAttempt[]
+  zaloLink          ZaloLink?
+  notifications     Notification[]
+  weeklyReports     WeeklyReport[]
+  notesAbout        StaffNote[]        @relation("NoteLearner")
+  notesWritten      StaffNote[]        @relation("NoteAuthor")
 
   @@index([role, status])
   @@index([consultantId])
@@ -73,9 +77,9 @@ model User {
 
 /// One study day. `lesson` is a snapshot, so content edits never change past sessions.
 model Attempt {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   day             Int
   /// YYYY-MM-DD in Asia/Ho_Chi_Minh
   localDate       String
@@ -90,12 +94,14 @@ model Attempt {
   selectedBy      String?
   /// Why this lesson (shown to staff and as the day's focus).
   focus           String?
-  wordsDone       Boolean  @default(false)
-  shadowDone      Boolean  @default(false)
-  completed       Boolean  @default(false)
+  wordsDone       Boolean   @default(false)
+  shadowDone      Boolean   @default(false)
+  completed       Boolean   @default(false)
+  /// Set when the learner presses start/continue on /today; cleared when the summary is created.
+  studyStartedAt  DateTime?
   /// Summary incl. errors / review items (see src/domain/types.ts)
   summary         Json?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime  @default(now())
 
   practice Practice?
 
@@ -118,6 +124,17 @@ model Practice {
   turns     Json
 
   @@index([userId, startedAt])
+}
+
+/// Study time per Vietnam calendar day: start/continue on /today → "Kết thúc & xem tổng kết".
+model StudyTime {
+  userId    String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// YYYY-MM-DD in Asia/Ho_Chi_Minh
+  localDate String
+  seconds   Int    @default(0)
+
+  @@id([userId, localDate])
 }
 
 /// AI usage log; `reserve_*` rows are written before each provider call.
@@ -248,4 +265,82 @@ model StaffNote {
   createdAt DateTime @default(now())
 
   @@index([learnerId, createdAt])
+}
+
+enum ShadowingStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+/// Standalone shadowing practice on a YouTube video (embedded via iframe, never downloaded).
+model ShadowingExercise {
+  id               String          @id @default(cuid())
+  slug             String          @unique
+  title            String
+  level            String?
+  instructions     String?
+  youtubeId        String
+  durationSec      Int?
+  /// Model text; sentences are split by src/domain/shadowing/transcript.ts. Editable by staff.
+  transcript       String
+  /// Timed words of the YouTube caption track: [{ w, s, e, sp? }] in seconds.
+  captionWords     Json?
+  /// e.g. "youtube:en:asr", "youtube:en", "file"
+  captionSource    String?
+  /// StoredCues derived from captionWords for the current transcript (src/domain/shadowing/cues.ts).
+  cues             Json?
+  /// StoredAnnotations: IPA per sentence (src/domain/shadowing/types.ts).
+  annotations      Json?
+  /// Limit for "Đọc cả bài", clamped to 5–300.
+  maxRecordSeconds Int             @default(30)
+  status           ShadowingStatus @default(DRAFT)
+  order            Int             @default(0)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  attempts ShadowingAttempt[]
+
+  @@index([status, order])
+}
+
+/// One submitted "Đọc cả bài" recording, graded on the server.
+model ShadowingAttempt {
+  id                 String            @id @default(cuid())
+  userId             String
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseId         String
+  exercise           ShadowingExercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  sttProvider        String
+  recognizedText     String
+  normalizedText     String
+  score              Int
+  wer                Float
+  totalWords         Int
+  correctCount       Int
+  substitutionCount  Int
+  deletionCount      Int
+  insertionCount     Int
+  wordResults        Json
+  /// { missing: string[], incorrect: { expected, actual }[], extra: string[] }
+  errorSummary       Json
+  /// "r2:<key>" or "db" (ShadowingRecording); null once purged.
+  recordingKey       String?
+  recordingMime      String?
+  recordingMs        Int?
+  recordingExpiresAt DateTime?
+  createdAt          DateTime          @default(now())
+
+  recording ShadowingRecording?
+
+  @@index([userId, exerciseId, createdAt])
+  @@index([exerciseId, createdAt])
+  @@index([recordingExpiresAt])
+}
+
+/// Recording bytes when R2 is not configured.
+model ShadowingRecording {
+  attemptId String           @id
+  attempt   ShadowingAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  data      Bytes
 }

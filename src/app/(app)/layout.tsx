@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { AppNav, Crumb } from "@/components/layout/app-nav";
-import { isStaff } from "@/domain/access";
+import { hasActiveAccess, isStaff } from "@/domain/access";
 import { Brand } from "@/components/layout/brand";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { NavProgress } from "@/components/layout/nav-progress";
@@ -26,6 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const days = user.plan ? streak(await getHistory(user.id)) : null;
 
   const hasPlan = Boolean(user.plan);
+  const showShadowing = hasActiveAccess(user);
 
   return (
     <div className="flex min-h-screen flex-col bg-[#edf3fd]">
@@ -40,6 +41,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
           <AppNav
             hasPlan={hasPlan}
+            showShadowing={showShadowing}
             className="hidden rounded-xl border border-white/10 bg-white/5 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] md:flex"
           />
 
@@ -69,7 +71,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {hasPlan && (
           <div className="border-t border-white/10 md:hidden bg-[#07132b]">
             <div className="mx-auto max-w-[1280px] px-3 py-1.5 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-              <AppNav hasPlan={hasPlan} className="flex justify-between sm:justify-start sm:gap-2" />
+              <AppNav hasPlan={hasPlan} showShadowing={showShadowing} className="flex justify-between sm:justify-start sm:gap-2" />
             </div>
           </div>
         )}

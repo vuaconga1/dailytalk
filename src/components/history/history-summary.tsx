@@ -12,6 +12,9 @@ type Props = {
   history: HistoryItem[];
   weekReviews: WeekReview[];
   streak: number;
+  /** Study seconds per month ("YYYY-MM"). */
+  studySeconds: Record<string, number>;
+  currentMonth: string;
   selectedMonth: string;
   onSelectMonth: (month: string) => void;
   monthOptions: MonthOption[];
@@ -21,10 +24,22 @@ export function HistorySummary({
   history,
   weekReviews,
   streak,
+  studySeconds,
+  currentMonth,
   selectedMonth,
   onSelectMonth,
   monthOptions,
 }: Props) {
+  // Study minutes: the selected month, or the current month when viewing everything
+  const minutesMonth = selectedMonth === "all" ? currentMonth : selectedMonth;
+  const [minutesYear, minutesMonthNum] = minutesMonth.split("-");
+  const monthMinutes = Math.floor((studySeconds[minutesMonth] ?? 0) / 60);
+  const totalMinutes = Math.floor(Object.values(studySeconds).reduce((a, s) => a + s, 0) / 60);
+  const daysInMonth = new Date(Date.UTC(Number(minutesYear), Number(minutesMonthNum), 0)).getUTCDate();
+  const monthTargetMinutes = daysInMonth * 15;
+  const minutesProgress = Math.min(Math.round((monthMinutes / monthTargetMinutes) * 100), 100);
+  const formatHours = (m: number) => (m >= 60 ? `${Math.floor(m / 60)} giờ ${m % 60} phút` : `${m} phút`);
+
   // Filter history based on selected month if not "all"
   const currentItems =
     selectedMonth === "all"
@@ -118,8 +133,37 @@ export function HistorySummary({
         )}
       </div>
 
-      {/* 4 Main Metric Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 mb-6">
+      {/* Main Metric Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 sm:gap-4 mb-6">
+        {/* Metric 0: Thời gian học trong tháng */}
+        <div className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-4.5 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider">
+              Thời gian học T{minutesMonthNum}/{minutesYear}
+            </span>
+            <span className="grid size-7 place-items-center rounded-lg bg-violet-50 text-violet-600 text-sm">
+              ⏱
+            </span>
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <strong className="text-2xl sm:text-3xl font-black text-violet-600">{monthMinutes}</strong>
+            <span className="text-sm font-semibold text-slate-400">phút</span>
+          </div>
+          <p className="mt-1 text-xs text-slate-500">
+            {selectedMonth === "all"
+              ? `Tổng toàn khóa: ${formatHours(totalMinutes)}`
+              : monthMinutes >= 60
+                ? `≈ ${formatHours(monthMinutes)}`
+                : `Mục tiêu ${monthTargetMinutes} phút/tháng`}
+          </p>
+          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-violet-500 transition-all duration-500"
+              style={{ width: `${minutesProgress}%` }}
+            />
+          </div>
+        </div>
+
         {/* Metric 1: Hoàn thành lộ trình */}
         <div className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-4.5 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md">
           <div className="flex items-center justify-between text-slate-500 mb-2">
