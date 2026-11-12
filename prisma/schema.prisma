@@ -33,7 +33,7 @@ model User {
   name          String
   passwordHash  String
   role          Role          @default(LEARNER)
-  status        AccountStatus @default(LEAD)
+  status        AccountStatus @default(ACTIVE)
   phone         String?
   /// Throwaway "Trải nghiệm demo" learner; email is <id>@demo.invalid.
   isDemo        Boolean       @default(false)
@@ -350,4 +350,11 @@ model ShadowingRecording {
   attemptId String           @id
   attempt   ShadowingAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   data      Bytes
+}
+
+/// Global dynamic application settings (e.g. API keys configured from DB/Admin).
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }

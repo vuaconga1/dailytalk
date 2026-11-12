@@ -1,8 +1,8 @@
 import type { Role } from "@/generated/prisma/client";
 import type { SessionUser } from "@/server/auth";
 
-/** Days a not-yet-activated learner may study before a consultant activates them. */
-export const TRIAL_DAYS = 1;
+/** Days a learner may study; every active learner now has access to all days. */
+export const TRIAL_DAYS = 30;
 export const DEFAULT_PACKAGE_DAYS = 30;
 /** Self-registration requires 8+ characters; an admin creating an account may set a shorter one. */
 export const MIN_PASSWORD = 8;
@@ -54,10 +54,13 @@ type Learner = Pick<SessionUser, "isDemo" | "status" | "accessEndsAt">;
 
 export function hasActiveAccess(user: Learner, now = new Date()): boolean {
   if (user.isDemo) return true;
-  return user.status === "ACTIVE" && (!user.accessEndsAt || user.accessEndsAt > now);
+  if (user.status === "PAUSED") return false;
+  if (user.status === "EXPIRED" && user.accessEndsAt && user.accessEndsAt <= now) return false;
+  return !user.accessEndsAt || user.accessEndsAt > now;
 }
 
-/** Whether the learner may open study day `day` (trial covers the first day only). */
-export function canStudyDay(user: Learner, day: number): boolean {
-  return hasActiveAccess(user) || day <= TRIAL_DAYS;
+/** Whether the learner may open study day `day` (all active learners can study all days). */
+export function canStudyDay(user: Learner, day?: number): boolean {
+  void day;
+  return hasActiveAccess(user);
 }

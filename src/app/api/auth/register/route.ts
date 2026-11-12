@@ -13,7 +13,18 @@ export const POST = route(async (req) => {
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (name.length < 1 || name.length > 80) throw new Problem("Vui lòng nhập tên, tối đa 80 ký tự.");
   const passwordHash = await hashPassword(password);
-  const user = await prisma.user.create({ data: { email, name, passwordHash } }).catch((error: unknown) => {
+  const user = await prisma.user
+    .create({
+      data: {
+        email,
+        name,
+        passwordHash,
+        status: "ACTIVE",
+        activatedAt: new Date(),
+        packageName: "Toàn diện",
+      },
+    })
+    .catch((error: unknown) => {
     if ((error as { code?: string }).code === "P2002") {
       throw new Problem("Không thể đăng ký email này. Hãy đăng nhập hoặc dùng email khác.");
     }

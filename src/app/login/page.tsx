@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/auth/auth-form";
 import { Brand } from "@/components/layout/brand";
-import { isDemo } from "@/server/ai/config";
 import { getSessionState, SESSION_END_MESSAGES } from "@/server/auth";
 
 export default async function LoginPage() {
@@ -29,7 +28,7 @@ export default async function LoginPage() {
         </div>
         <small className="hidden text-[#a9c4d6] md:block">Đạo Đức · Trí Tuệ · Bản Lĩnh</small>
       </section>
-      <AuthForm demoEnabled={isDemo} notice={ended ? SESSION_END_MESSAGES[ended] : ""} />
+      <AuthForm demoEnabled={false} notice={ended ? SESSION_END_MESSAGES[ended] : ""} />
     </div>
   );
 }

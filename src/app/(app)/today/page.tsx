@@ -84,9 +84,7 @@ export default async function TodayPage() {
 
             {attempt.locked && (
               <div className="relative mt-6 rounded-2xl bg-slate-50 p-4.5 text-sm text-slate-700 border border-slate-200">
-                {user.status === "LEAD"
-                  ? "Bạn đã hoàn thành buổi học thử. Chuyên viên WeWIN sẽ liên hệ tư vấn và kích hoạt lộ trình 30 ngày để bạn học tiếp."
-                  : "Tài khoản đang tạm dừng hoặc đã hết hạn. Vui lòng liên hệ chuyên viên WeWIN để tiếp tục học."}
+                Tài khoản đang tạm dừng hoặc đã hết hạn. Vui lòng liên hệ chuyên viên WeWIN để tiếp tục học.
               </div>
             )}
 

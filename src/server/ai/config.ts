@@ -10,15 +10,24 @@ import { prisma } from "@/server/db";
 export type Usage = Record<string, unknown>;
 
 function readConfig() {
-  const mode = process.env.AI_MODE?.trim() || "demo";
-  if (mode !== "demo" && mode !== "openai") throw new Error("AI_MODE must be demo or openai");
+  const explicitMode = process.env.AI_MODE?.trim();
+  if (explicitMode && explicitMode !== "demo" && explicitMode !== "openai") {
+    throw new Error("AI_MODE must be demo or openai");
+  }
+  const key = process.env.OPENAI_API_KEY?.trim() ?? "";
+  // When an OpenAI API key is provided, enable openai mode unless explicitly forced to demo without key
+  const mode: "demo" | "openai" = explicitMode === "openai" ? "openai" : key ? "openai" : (explicitMode as "demo" | "openai") || "demo";
+  const model = process.env.OPENAI_TEXT_MODEL?.trim() || "gpt-4o-mini";
+  const stt = process.env.OPENAI_TRANSCRIBE_MODEL?.trim() || "whisper-1";
+  const tts = process.env.OPENAI_TTS_MODEL?.trim() || "tts-1";
+  const voice = process.env.OPENAI_VOICE?.trim() || "alloy";
   const config = {
     mode,
-    key: process.env.OPENAI_API_KEY?.trim() ?? "",
-    model: process.env.OPENAI_TEXT_MODEL?.trim() ?? "",
-    stt: process.env.OPENAI_TRANSCRIBE_MODEL?.trim() ?? "",
-    tts: process.env.OPENAI_TTS_MODEL?.trim() ?? "",
-    voice: process.env.OPENAI_VOICE?.trim() || "alloy",
+    key,
+    model,
+    stt,
+    tts,
+    voice,
   } as const;
   if (mode === "openai" && !(config.model && config.stt && config.tts)) {
     throw new Error("AI_MODE=openai cần đủ ba tên model. Xem .env.example.");
@@ -32,7 +41,7 @@ export const isDemo = aiConfig.mode === "demo";
 /** Text-to-speech: a self-hosted OpenAI-compatible server (Kokoro) when TTS_BASE_URL is set, otherwise OpenAI. */
 export const ttsConfig = {
   baseUrl: process.env.TTS_BASE_URL?.trim() ?? "",
-  model: process.env.TTS_MODEL?.trim() || aiConfig.tts,
+  model: process.env.TTS_BASE_URL?.trim() ? (process.env.TTS_MODEL?.trim() || "kokoro") : (aiConfig.tts || "tts-1"),
   voice: process.env.TTS_VOICE?.trim() || aiConfig.voice,
 } as const;
 /**
@@ -41,7 +50,7 @@ export const ttsConfig = {
  */
 export const canGenerateSpeech = ttsConfig.baseUrl
   ? Boolean(ttsConfig.model)
-  : !isDemo && !process.env.TTS_MODEL?.trim();
+  : !isDemo && Boolean(aiConfig.tts);
 
 export const API_KEY_SETTING = "OPENAI_API_KEY";
 /** Other server instances pick up a key changed in the admin console within this time. */
