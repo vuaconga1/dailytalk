@@ -12,9 +12,10 @@ async function main() {
     console.log(`youtubeId: ${ex.youtubeId}`);
     console.log(`captionSource: ${ex.captionSource}`);
     console.log(`cues is null? ${ex.cues === null}`);
-    const cues = ex.cues as any;
+    const cues = ex.cues as { version?: unknown; lines?: unknown[] } | null;
     console.log(`cues version: ${cues?.version}, lines: ${cues?.lines?.length}`);
-    console.log(`annotations lines: ${(ex.annotations as any)?.lines?.length}`);
+    const annotations = ex.annotations as { lines?: unknown[] } | null;
+    console.log(`annotations lines: ${annotations?.lines?.length}`);
   }
 }
 

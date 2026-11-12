@@ -3,8 +3,25 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { prisma } from "../src/server/db";
 import { deriveContent, uniqueSlug } from "../src/server/shadowing/store";
-import { validateCues } from "../src/domain/shadowing/cues";
+import type { Prisma } from "../src/generated/prisma/client";
+import { validateCues, type StoredCues } from "../src/domain/shadowing/cues";
 import { transcriptLines } from "../src/domain/shadowing/transcript";
+
+interface ProcessedItem {
+  title: string;
+  level: string;
+  youtubeId: string;
+  durationSec: number | null;
+  transcript: string;
+  captionWords: Prisma.InputJsonValue;
+  captionSource: string;
+  maxRecordSeconds: number;
+  order: number;
+  status: "DRAFT";
+  cues: ReturnType<typeof deriveContent>["cues"];
+  annotations: ReturnType<typeof deriveContent>["annotations"];
+  linesCount: number;
+}
 
 interface SeedVideoItem {
   youtubeId: string;
@@ -382,7 +399,7 @@ Really?`,
 async function main() {
   console.log("=== PREPARING SHADOWING EXERCISES ===");
   const dumpDir = path.join(process.cwd(), "scripts", "dump");
-  const processedItems: any[] = [];
+  const processedItems: ProcessedItem[] = [];
 
   let order = 1;
   for (const item of VIDEOS) {
@@ -392,7 +409,7 @@ async function main() {
 
     // 1. Derive content (cues + IPA annotations)
     const derived = deriveContent(item.transcript, words, item.youtubeId);
-    const cues = derived.cues as any;
+    const cues = derived.cues as unknown as StoredCues | null;
     if (!cues) {
       throw new Error(`Failed to build cues for ${item.youtubeId}`);
     }
@@ -424,7 +441,7 @@ async function main() {
       captionSource: source,
       maxRecordSeconds,
       order: order++,
-      status: "DRAFT",
+      status: "DRAFT" as const,
       cues: derived.cues,
       annotations: derived.annotations,
       linesCount,
@@ -461,7 +478,7 @@ async function main() {
           transcript: item.transcript,
           cues: item.cues,
           annotations: item.annotations,
-          status: "DRAFT",
+          status: "DRAFT" as const,
           maxRecordSeconds: item.maxRecordSeconds,
         },
       });
@@ -479,7 +496,7 @@ async function main() {
           captionSource: item.captionSource,
           maxRecordSeconds: item.maxRecordSeconds,
           order: item.order,
-          status: "DRAFT",
+          status: "DRAFT" as const,
           cues: item.cues,
           annotations: item.annotations,
         },
