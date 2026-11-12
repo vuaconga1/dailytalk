@@ -1,3 +1,12 @@
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
+    super(message);
+  }
+}
+
 /** Browser-side fetch helper: JSON in, JSON or Blob out, server error message thrown. */
 export async function api<T = unknown>(path: string, body?: unknown, init: RequestInit = {}): Promise<T> {
   const options: RequestInit = { credentials: "same-origin", ...init };
@@ -19,7 +28,7 @@ export async function api<T = unknown>(path: string, body?: unknown, init: Reque
       message = "Không kết nối được máy chủ.";
     }
     if (res.status === 401) window.location.assign("/login");
-    throw new Error(message);
+    throw new ApiError(message, res.status);
   }
   const type = res.headers.get("content-type") ?? "";
   return (type.includes("application/json") ? res.json() : res.blob()) as Promise<T>;

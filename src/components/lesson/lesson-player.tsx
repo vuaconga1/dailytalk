@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "@/client/api";
+import { api, ApiError } from "@/client/api";
 import { AI_UNAVAILABLE } from "@/lib/errors";
 import type { AttemptView, PracticeView, Summary, Turn, WeekReview } from "@/domain/types";
 import { PracticeStep } from "./practice-step";
@@ -13,6 +13,8 @@ import { WordsStep } from "./words-step";
 
 const DAILY_SECONDS = 180;
 const STEPS = ["01. Từ & mẫu câu", "02. Shadowing", "03. Hội thoại AI", "04. Tổng kết"];
+
+export type TurnResult = { turns: Turn[]; ai_off: boolean; serverTime: number };
 
 /** Which parts of the lesson have cached MP3 clips; the rest use the browser voice. */
 export type LessonAudio = { lines: boolean; words: boolean; lineUrls: (string | null)[]; wordUrls: (string | null)[] };
@@ -36,6 +38,9 @@ export function LessonPlayer({ initial, week, serverTime, demo, audio, contextLa
   const [aiOff, setAiOff] = useState(false);
   const offsetRef = useRef(0);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  /** Id of the speaking session still running, abandoned if the learner leaves the page. */
+  const liveIdRef = useRef<string | null>(null);
+  const attachedRef = useRef(false);
 
   useEffect(() => {
     offsetRef.current = serverTime - Date.now();
@@ -47,6 +52,35 @@ export function LessonPlayer({ initial, week, serverTime, demo, audio, contextLa
     if (practice.ended) return 0;
     return Math.max(0, Math.ceil((practice.deadline - (Date.now() + offsetRef.current)) / 1000));
   }, [practice]);
+
+  useEffect(() => {
+    liveIdRef.current = practice && !practice.ended && !attempt.completed && remaining() > 0 ? practice.id : null;
+  });
+
+  useEffect(() => {
+    const abandon = () => {
+      const id = liveIdRef.current;
+      if (!id) return;
+      liveIdRef.current = null;
+      void fetch("/api/practice/abandon", {
+        method: "POST",
+        keepalive: true,
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: id }),
+      }).catch(() => {});
+    };
+    attachedRef.current = true;
+    window.addEventListener("pagehide", abandon);
+    return () => {
+      attachedRef.current = false;
+      window.removeEventListener("pagehide", abandon);
+      // Strict Mode remounts immediately; only a real unmount (leaving the page) abandons.
+      setTimeout(() => {
+        if (!attachedRef.current) abandon();
+      }, 0);
+    };
+  }, []);
 
   const live = Boolean(practice && !practice.ended);
   useEffect(() => {
@@ -85,6 +119,7 @@ export function LessonPlayer({ initial, week, serverTime, demo, audio, contextLa
   }, [notify]);
 
   async function startPractice() {
+    await media.requestMicrophone();
     const r = await api<{ practice: PracticeView; serverTime: number }>("/api/practice/start", { attempt_id: attempt.id });
     offsetRef.current = r.serverTime - Date.now();
     setPractice(r.practice);
@@ -92,27 +127,45 @@ export function LessonPlayer({ initial, week, serverTime, demo, audio, contextLa
     setAttempt((a) => (a.completed ? { ...a, completed: false, summary: null } : a));
   }
 
-  async function sendTurn(text: string) {
-    if (!practice) return;
-    const r = await api<{ turns: Turn[]; ai_off: boolean; serverTime: number }>("/api/practice/turn", {
-      session_id: practice.id,
-      text,
-      input_mode: "voice",
-      ai_off: aiOff,
-    });
+  /** The session row is gone (e.g. abandoned by a reload racing the new page); offer a fresh start. */
+  const losePractice = useCallback(() => {
+    liveIdRef.current = null;
+    media.stopAll();
+    setPractice(null);
+    notify("Phiên luyện tập đã kết thúc. Hãy bắt đầu phiên mới.");
+  }, [media, notify]);
+
+  function applyTurn(r: TurnResult) {
     offsetRef.current = r.serverTime - Date.now();
     setPractice((p) => (p ? { ...p, turns: r.turns } : p));
     if (r.ai_off && !demo && !aiOff) disableAi();
   }
 
+  async function sendTurn(text: string) {
+    if (!practice) return;
+    let r: TurnResult;
+    try {
+      r = await api("/api/practice/turn", {
+        session_id: practice.id,
+        text,
+        input_mode: "voice",
+        ai_off: aiOff,
+      });
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 404) losePractice();
+      throw e;
+    }
+    applyTurn(r);
+  }
+
   async function finish() {
     media.stopAll();
     const summary = await api<Summary>("/api/complete", { attempt_id: attempt.id, ai_off: aiOff });
-    if (summary.mode === "demo" && !demo && !aiOff) disableAi();
     setAttempt((a) => ({ ...a, completed: true, summary }));
     setPractice((p) => (p ? { ...p, ended: true } : p));
     goTo(3);
-    router.refresh();
+    // A bare refresh lets /lesson open the next day (new key, remount at step 1); pin this day instead.
+    router.replace(`/lesson?day=${attempt.day}`);
   }
 
   const left = remaining();
@@ -188,8 +241,10 @@ export function LessonPlayer({ initial, week, serverTime, demo, audio, contextLa
             demo={demo || aiOff}
             media={media}
             onAiFail={disableAi}
+            onLost={losePractice}
             onStart={startPractice}
             onSend={sendTurn}
+            onVoiceTurn={applyTurn}
             onFinish={finish}
             onError={notify}
           />

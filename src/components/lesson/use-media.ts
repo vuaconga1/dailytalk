@@ -31,7 +31,7 @@ const PREFERRED_TYPES = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm"];
 function microphoneError(e: unknown): string {
   const name = e instanceof DOMException ? e.name : "";
   if (name === "NotFoundError" || name === "OverconstrainedError")
-    return "Không tìm thấy micro. Hãy cắm micro/tai nghe và kiểm tra thiết bị đầu vào trong cài đặt âm thanh của máy.";
+    return "Không tìm thấy micro nên trình duyệt không hiện hộp thoại xin quyền. Hãy cắm micro/tai nghe, chọn làm thiết bị đầu vào trong cài đặt âm thanh của máy rồi thử lại.";
   if (name === "NotAllowedError" || name === "SecurityError")
     return "Micro đang bị chặn. Bấm biểu tượng bên trái thanh địa chỉ, cho phép Micro rồi thử lại.";
   if (name === "NotReadableError" || name === "AbortError")
@@ -249,6 +249,17 @@ export function useMedia() {
     [stopSound],
   );
 
+  /** Asks for microphone permission up front so the browser prompt shows before a timed session starts. */
+  const requestMicrophone = useCallback(async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("Ghi âm cần HTTPS hoặc localhost và trình duyệt hỗ trợ micro. Thử mở bằng Safari/Chrome ngoài Zalo.");
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch((e: unknown) => {
+      throw new Error(microphoneError(e));
+    });
+    stream.getTracks().forEach((t) => t.stop());
+  }, []);
+
   /** Stops the current capture, including one still waiting for microphone permission. */
   const stopRecording = useCallback(() => {
     cancelStartRef.current = true;
@@ -381,11 +392,26 @@ export function useMedia() {
       audioRef,
       stopSound,
       stopAll,
+      requestMicrophone,
       startRecording,
       stopRecording,
       toggleRecording,
       toggleRecognition,
     }),
-    [recording, speak, playBlob, playUrl, playTracked, speakTracked, stopSound, stopAll, startRecording, stopRecording, toggleRecording, toggleRecognition],
+    [
+      recording,
+      speak,
+      playBlob,
+      playUrl,
+      playTracked,
+      speakTracked,
+      stopSound,
+      stopAll,
+      requestMicrophone,
+      startRecording,
+      stopRecording,
+      toggleRecording,
+      toggleRecognition,
+    ],
   );
 }

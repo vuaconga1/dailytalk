@@ -102,7 +102,8 @@ export async function text(instructions: string, data: unknown, jsonMode: boolea
     (await openai()).responses.create({
       model: aiConfig.model,
       instructions,
-      input: JSON.stringify(data),
+      // json_object mode rejects input that never mentions "json"; the instructions don't count.
+      input: jsonMode ? `Reply with a JSON object. Input data:\n${JSON.stringify(data)}` : JSON.stringify(data),
       max_output_tokens: jsonMode ? maxTokens : 400,
       store: false,
       ...(jsonMode ? { text: { format: { type: "json_object" as const } } } : {}),

@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
+import { after } from "next/server";
 import type { Prisma } from "@/generated/prisma/client";
 import { Problem } from "@/lib/errors";
 import { vnDayStart } from "@/lib/time";
@@ -29,10 +30,21 @@ export async function logUsage(userId: string, kind: string, data: object, model
   });
 }
 
-/** Reserve BEFORE network I/O. Failures count too, limiting costly retries. */
-export async function reserveProviderCall(userId: string, kind: string) {
+/** Writes the usage row after the response is sent; only callable while handling a request. */
+export function logUsageLater(userId: string, kind: string, data: object, model: string | null = aiConfig.model) {
+  after(() => logUsage(userId, kind, data, model).catch((e) => console.error("Usage log failed:", e)));
+}
+
+/**
+ * Reserve BEFORE network I/O. Failures count too, limiting costly retries.
+ * `defer` (request handlers only) skips the wait when there is no daily limit to enforce.
+ */
+export async function reserveProviderCall(userId: string, kind: string, defer = false) {
   if (isDemo) return;
-  if (OPEN_ALL_DAYS) return logUsage(userId, `reserve_${kind}`, {});
+  if (OPEN_ALL_DAYS) {
+    if (defer) return logUsageLater(userId, `reserve_${kind}`, {});
+    return logUsage(userId, `reserve_${kind}`, {});
+  }
   const since = vnDayStart();
   const limit = Number(process.env.MAX_PROVIDER_CALLS_PER_USER_DAY ?? 90);
   const count = await prisma.usage.count({

@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import { api, errorMessage } from "@/client/api";
+import { api, ApiError, errorMessage } from "@/client/api";
 import { framesUsed } from "@/domain/frames";
 import { AI_UNAVAILABLE } from "@/lib/errors";
-import type { Lesson, PracticeView } from "@/domain/types";
+import type { Lesson, PracticeView, Turn } from "@/domain/types";
+import type { TurnResult } from "./lesson-player";
 import { useAction } from "./use-action";
 import { speechRecognition, type useMedia } from "./use-media";
 
@@ -16,13 +17,15 @@ type Props = {
   demo: boolean;
   media: ReturnType<typeof useMedia>;
   onAiFail: () => void;
+  onLost: () => void;
   onStart: () => Promise<void>;
   onSend: (text: string) => Promise<void>;
+  onVoiceTurn: (r: TurnResult) => void;
   onFinish: () => Promise<void>;
   onError: (message: string) => void;
 };
 
-export function PracticeStep({ lesson, practice, expired, remaining, demo, media, onAiFail, onStart, onSend, onFinish, onError }: Props) {
+export function PracticeStep({ lesson, practice, expired, remaining, demo, media, onAiFail, onLost, onStart, onSend, onVoiceTurn, onFinish, onError }: Props) {
   const { pending, run } = useAction(onError);
   const [status, setStatus] = useState("");
   const [draft, setDraft] = useState("");
@@ -73,16 +76,29 @@ export function PracticeStep({ lesson, practice, expired, remaining, demo, media
   async function transcribe(blob: Blob) {
     if (!practice) return;
     setBusy(true);
-    setStatus("Đang nhận dạng giọng nói…");
+    setStatus("Đang xử lý…");
     try {
-      const r = await api<{ text: string }>("/api/transcribe", blob, {
+      const r = await api<Omit<TurnResult, "turns"> & { turns: Turn[] | null }>("/api/transcribe", blob, {
         headers: { "Content-Type": blob.type.split(";")[0], "X-Practice-Id": practice.id },
       });
-      await save(r.text);
-    } catch {
-      onAiFail();
-      setStatus(`${AI_UNAVAILABLE} Giữ nút và nói lại để chuyển sang chế độ trò chuyện cơ bản.`);
       setBusy(false);
+      if (!r.turns) {
+        setStatus("Chưa nghe rõ. Giữ nút và nói lại nhé.");
+        return;
+      }
+      setStatus("");
+      onVoiceTurn({ ...r, turns: r.turns });
+    } catch (e) {
+      setBusy(false);
+      if (e instanceof ApiError && e.status === 404) {
+        setStatus("");
+        onLost();
+      } else if (e instanceof ApiError && e.status < 500) {
+        setStatus(e.message);
+      } else {
+        onAiFail();
+        setStatus(`${AI_UNAVAILABLE} Giữ nút và nói lại để chuyển sang chế độ trò chuyện cơ bản.`);
+      }
     }
   }
 

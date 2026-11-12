@@ -12,6 +12,8 @@ export const MAX_TURNS = 20;
 export const OPEN_ALL_DAYS = process.env.OPEN_ALL_DAYS?.trim() !== "false";
 /** A crashed request must not lock a practice session forever. */
 const STALE_LOCK_MS = 90_000;
+/** Speech recorded right up to the deadline is uploaded, transcribed and saved after it. */
+export const LATE_TURN_MS = 30_000;
 
 export function toPracticeView(p: Practice): PracticeView {
   return {
@@ -44,35 +46,53 @@ function unlockedSince(now: Date): Prisma.PracticeWhereInput {
   };
 }
 
+/** Writes the session's turns and releases the lock in one query. */
+export type SaveTurns = (turns: Turn[]) => Promise<void>;
+
 /** Runs `fn` while holding the session's AI lock; one provider call per session at a time. */
-export async function withPracticeLock<T>(userId: string, practiceId: unknown, fn: (p: Practice) => Promise<T>): Promise<T> {
+export async function withPracticeLock<T>(
+  userId: string,
+  practiceId: unknown,
+  fn: (p: Practice, save: SaveTurns) => Promise<T>,
+  graceMs = 0,
+): Promise<T> {
   if (typeof practiceId !== "string" || !practiceId) throw new Problem("Không tìm thấy phiên luyện tập.", 404);
   const now = new Date();
-  const { count } = await prisma.practice.updateMany({
+  const [locked] = await prisma.practice.updateManyAndReturn({
     where: {
       id: practiceId,
       userId,
       ended: false,
-      deadline: { gt: now },
+      deadline: { gt: new Date(now.getTime() - graceMs) },
       ...unlockedSince(now),
     },
     data: { busySince: now },
   });
-  if (!count) {
+  if (!locked) {
     const p = await prisma.practice.findFirst({
       where: { id: practiceId, userId },
     });
     if (!p) throw new Problem("Không tìm thấy phiên luyện tập.", 404);
-    if (p.ended || p.deadline <= now) throw new Problem("Đã hết 3 phút hội thoại. Hãy xem tổng kết.", 409);
+    if (p.ended || p.deadline.getTime() <= now.getTime() - graceMs) throw new Problem("Đã hết 3 phút hội thoại. Hãy xem tổng kết.", 409);
     throw new Problem("AI đang xử lý lượt trước. Vui lòng chờ.", 409);
   }
-  try {
-    return await fn(await prisma.practice.findUniqueOrThrow({ where: { id: practiceId } }));
-  } finally {
+  let released = false;
+  const save: SaveTurns = async (turns) => {
     await prisma.practice.updateMany({
       where: { id: practiceId, busySince: now },
-      data: { busySince: null },
+      data: { turns, busySince: null },
     });
+    released = true;
+  };
+  try {
+    return await fn(locked, save);
+  } finally {
+    if (!released) {
+      await prisma.practice.updateMany({
+        where: { id: practiceId, busySince: now },
+        data: { busySince: null },
+      });
+    }
   }
 }
 
