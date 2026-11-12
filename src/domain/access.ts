@@ -4,6 +4,17 @@ import type { SessionUser } from "@/server/auth";
 /** Days a learner may study; every active learner now has access to all days. */
 export const TRIAL_DAYS = 30;
 export const DEFAULT_PACKAGE_DAYS = 30;
+export const MAX_PACKAGE_DAYS = 3650;
+/** Quick choices for an account's term; `custom`, `date` and `unlimited` are handled by the admin API. */
+export const TERM_PRESETS = [
+  { days: 7, label: "7 ngày" },
+  { days: 30, label: "1 tháng (30 ngày)" },
+  { days: 90, label: "3 tháng (90 ngày)" },
+  { days: 180, label: "6 tháng (180 ngày)" },
+  { days: 365, label: "1 năm (365 ngày)" },
+] as const;
+/** Active accounts ending within this many days show up under "Sắp hết hạn". */
+export const EXPIRING_SOON_DAYS = 7;
 /** Self-registration requires 8+ characters; an admin creating an account may set a shorter one. */
 export const MIN_PASSWORD = 8;
 export const ADMIN_MIN_PASSWORD = 3;
@@ -57,6 +68,12 @@ export function hasActiveAccess(user: Learner, now = new Date()): boolean {
   if (user.status === "PAUSED") return false;
   if (user.status === "EXPIRED" && user.accessEndsAt && user.accessEndsAt <= now) return false;
   return !user.accessEndsAt || user.accessEndsAt > now;
+}
+
+/** Whole days of access left (0 once ended), or null for an account without an end date. */
+export function daysLeft(accessEndsAt: Date | null, now = new Date()): number | null {
+  if (!accessEndsAt) return null;
+  return Math.max(0, Math.ceil((accessEndsAt.getTime() - now.getTime()) / 86_400_000));
 }
 
 /** Whether the learner may open study day `day` (all active learners can study all days). */

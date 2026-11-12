@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ApiForm } from "@/components/admin/api-form";
-import { can, DEFAULT_PACKAGE_DAYS } from "@/domain/access";
+import { TermFields } from "@/components/admin/term-fields";
+import { can, daysLeft } from "@/domain/access";
 import { learnerDetail, staffList } from "@/server/admin";
 import type { WeeklyHighlights } from "@/server/jobs";
 import { requireStaff } from "@/server/http/page-guards";
@@ -45,7 +46,11 @@ export default async function LearnerDetailPage({ params }: { params: Promise<{ 
         </div>
         <span className={`badge ${learner.status === "ACTIVE" ? "" : "badge-gold"}`}>
           {STATUS_LABELS[learner.status]}
-          {learner.accessEndsAt ? ` · đến ${formatVnDate(vnDate(learner.accessEndsAt))}` : ""}
+          {learner.accessEndsAt
+            ? ` · đến ${formatVnDate(vnDate(learner.accessEndsAt))} (còn ${daysLeft(learner.accessEndsAt)} ngày)`
+            : learner.status !== "LEAD"
+              ? " · không thời hạn"
+              : ""}
         </span>
       </div>
 
@@ -205,12 +210,14 @@ export default async function LearnerDetailPage({ params }: { params: Promise<{ 
               >
                 <div className="field">
                   <label htmlFor="packageName">Tên gói</label>
-                  <input id="packageName" name="packageName" defaultValue={learner.packageName ?? "Gói 30 ngày"} maxLength={80} />
+                  <input id="packageName" name="packageName" maxLength={80} placeholder={learner.packageName ?? "Tự đặt theo thời hạn"} />
                 </div>
-                <div className="field">
-                  <label htmlFor="days">Số ngày</label>
-                  <input id="days" name="days" type="number" min={1} max={366} defaultValue={DEFAULT_PACKAGE_DAYS} />
-                </div>
+                <TermFields extending={learner.status === "ACTIVE" && !!learner.accessEndsAt} />
+                {learner.status === "ACTIVE" && learner.accessEndsAt && (
+                  <p className="mb-4 -mt-2 text-xs text-muted">
+                    Số ngày được cộng sau ngày hết hạn hiện tại; chọn “Đến ngày cụ thể” để đặt lại ngày hết hạn.
+                  </p>
+                )}
                 <div className="field">
                   <label htmlFor="phone">Số điện thoại</label>
                   <input id="phone" name="phone" defaultValue={learner.phone ?? ""} maxLength={30} />

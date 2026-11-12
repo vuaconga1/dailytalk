@@ -1,69 +1,57 @@
-import { ADMIN_MIN_PASSWORD, DEFAULT_PACKAGE_DAYS } from "@/domain/access";
 import { json, readJson, staffRoute } from "@/server/http/api";
-import { hashPassword } from "@/server/auth";
+import { consultantFrom, createLearner, readTerm, text } from "@/server/accounts";
 import { Problem } from "@/lib/errors";
 import { appUrl } from "@/server/jobs";
 import { notify } from "@/server/notify";
 import { prisma } from "@/server/db";
 import { vnDate } from "@/lib/time";
-import { readCredentials } from "../../auth/credentials";
 
-const DAY_MS = 86_400_000;
+export const maxDuration = 60;
+
+const MAX_BULK_ROWS = 200;
+const BULK_CONCURRENCY = 5;
 const ACTIONS = ["activate", "pause", "resume", "assign"] as const;
 type Action = (typeof ACTIONS)[number];
 
-function text(value: unknown, max: number): string | null {
-  if (value === undefined || value === null || value === "") return null;
-  if (typeof value !== "string" || value.trim().length > max) throw new Problem("Dữ liệu không hợp lệ.");
-  return value.trim();
-}
+type RowResult = { ok: true; id: string } | { ok: false; error: string };
 
-function packageDays(value: unknown): number {
-  const days = Number(value ?? DEFAULT_PACKAGE_DAYS);
-  if (!Number.isInteger(days) || days < 1 || days > 366) throw new Problem("Số ngày phải từ 1 đến 366.");
-  return days;
-}
-
-/** Admin creates a learner account, optionally activating a package right away. */
+/**
+ * Admin creates learner accounts. A body with `rows` creates them in bulk (shared fields such as
+ * `activate` apply to every row) and reports each row separately; otherwise the body is one account.
+ */
 export const POST = staffRoute("createAccounts", async (req, staff) => {
   const body = await readJson(req);
-  const name = text(body.name, 80);
-  if (!name) throw new Problem("Tên cần từ 1 đến 80 ký tự.");
-  const { email, password } = readCredentials(body, ADMIN_MIN_PASSWORD);
-  const phone = text(body.phone, 30);
-  const activate = body.activate === true || body.activate === "on";
-  const now = new Date();
-  const days = activate ? packageDays(body.days) : 0;
-  const packageName = activate ? (text(body.packageName, 80) ?? `Gói ${days} ngày`) : null;
+  if (!Array.isArray(body.rows)) return json({ ok: true, id: await createLearner(body, staff) });
 
-  const passwordHash = await hashPassword(password);
-  const learner = await prisma.user
-    .create({
-      data: {
-        email,
-        name,
-        passwordHash,
-        phone,
-        ...(activate && {
-          status: "ACTIVE" as const,
-          packageName,
-          activatedAt: now,
-          accessEndsAt: new Date(now.getTime() + days * DAY_MS),
-        }),
-      },
-    })
-    .catch((error: unknown) => {
-      if ((error as { code?: string }).code === "P2002") throw new Problem("Email này đã có tài khoản.", 409);
-      throw error;
-    });
-  await prisma.staffNote.create({
-    data: {
-      learnerId: learner.id,
-      authorId: staff.id,
-      body: activate ? `Admin tạo tài khoản và kích hoạt ${packageName} (+${days} ngày).` : "Admin tạo tài khoản.",
-    },
-  });
-  return json({ ok: true, id: learner.id });
+  const { rows: rawRows, ...shared } = body;
+  const rows = rawRows as unknown[];
+  if (!rows.length) throw new Problem("Chưa có dòng nào.");
+  if (rows.length > MAX_BULK_ROWS) throw new Problem(`Tối đa ${MAX_BULK_ROWS} tài khoản mỗi lần.`);
+
+  const seen = new Set<string>();
+  const results: RowResult[] = new Array(rows.length);
+  const run = async (row: unknown, i: number) => {
+    if (typeof row !== "object" || row === null || Array.isArray(row)) {
+      results[i] = { ok: false, error: "Dòng không hợp lệ." };
+      return;
+    }
+    const email = String((row as Record<string, unknown>).email ?? "").trim().toLowerCase();
+    if (email && seen.has(email)) {
+      results[i] = { ok: false, error: "Email bị trùng trong danh sách." };
+      return;
+    }
+    seen.add(email);
+    try {
+      results[i] = { ok: true, id: await createLearner({ ...shared, ...row }, staff) };
+    } catch (error) {
+      if (!(error instanceof Problem)) console.error("bulk create learner", error);
+      results[i] = { ok: false, error: error instanceof Problem ? error.message : "Lỗi máy chủ." };
+    }
+  };
+  for (let i = 0; i < rows.length; i += BULK_CONCURRENCY) {
+    await Promise.all(rows.slice(i, i + BULK_CONCURRENCY).map((row, j) => run(row, i + j)));
+  }
+  return json({ ok: true, created: results.filter((r) => r.ok).length, results });
 });
 
 /**
@@ -80,33 +68,28 @@ export const PATCH = staffRoute("manageLearners", async (req, staff) => {
   });
   if (!learner) throw new Problem("Không tìm thấy học viên.", 404);
 
-  const consultantId = text(body.consultantId, 40);
-  if (consultantId) {
-    const ok = await prisma.user.count({ where: { id: consultantId, role: { in: ["CONSULTANT", "ADMIN"] } } });
-    if (!ok) throw new Problem("Chuyên viên không hợp lệ.");
-  }
+  const consultantId = await consultantFrom(body);
 
   let note: string;
   const now = new Date();
   if (action === "activate") {
-    const days = packageDays(body.days);
-    const packageName = text(body.packageName, 80) ?? `Gói ${days} ngày`;
     // Extending an active package adds days after its current end.
     const from = learner.accessEndsAt && learner.accessEndsAt > now ? learner.accessEndsAt : now;
-    const accessEndsAt = new Date(from.getTime() + days * DAY_MS);
+    const term = readTerm(body, from);
+    const packageName = text(body.packageName, 80) ?? term.packageName;
     await prisma.user.update({
       where: { id: learner.id },
       data: {
         status: "ACTIVE",
         packageName,
         activatedAt: learner.activatedAt ?? now,
-        accessEndsAt,
+        accessEndsAt: term.accessEndsAt,
         lockAt: null,
         phone: text(body.phone, 30) ?? undefined,
         consultantId: consultantId ?? learner.consultantId ?? (staff.role === "CONSULTANT" ? staff.id : null),
       },
     });
-    note = `Kích hoạt ${packageName} (+${days} ngày, đến ${vnDate(accessEndsAt).split("-").reverse().join("/")}).`;
+    note = `Kích hoạt ${packageName} (${term.summary}).`;
     await notify(
       learner.id,
       "activated",
@@ -117,7 +100,7 @@ export const PATCH = staffRoute("manageLearners", async (req, staff) => {
     await prisma.user.update({ where: { id: learner.id }, data: { status: "PAUSED" } });
     note = "Tạm dừng tài khoản.";
   } else if (action === "resume") {
-    if (!learner.accessEndsAt || learner.accessEndsAt <= now) throw new Problem("Gói đã hết hạn, hãy kích hoạt/gia hạn.");
+    if (learner.accessEndsAt && learner.accessEndsAt <= now) throw new Problem("Gói đã hết hạn, hãy kích hoạt/gia hạn.");
     if (learner.lockAt && learner.lockAt <= now) throw new Problem("Học viên đã hoàn thành lộ trình và bị khóa, hãy kích hoạt lại.");
     await prisma.user.update({ where: { id: learner.id }, data: { status: "ACTIVE" } });
     note = "Mở lại tài khoản.";

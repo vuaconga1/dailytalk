@@ -1,5 +1,5 @@
 import "server-only";
-import { hasActiveAccess } from "@/domain/access";
+import { EXPIRING_SOON_DAYS, hasActiveAccess } from "@/domain/access";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/server/db";
 import { shiftDays, vnDate } from "@/lib/time";
@@ -14,6 +14,9 @@ export const LEARNER_FILTERS = {
   lead: "Chờ kích hoạt",
   active: "Đang học",
   support: "Cần hỗ trợ",
+  expiring: `Sắp hết hạn (≤ ${EXPIRING_SOON_DAYS} ngày)`,
+  expired: "Hết hạn",
+  unlimited: "Không thời hạn",
   inactive: "Tạm dừng / hết hạn",
 } as const;
 
@@ -88,20 +91,58 @@ function toRow(row: ListRow): LearnerRow {
   };
 }
 
-export async function listLearners(filter: LearnerFilter = "all", q = ""): Promise<LearnerRow[]> {
-  const where: Prisma.UserWhereInput = { role: "LEARNER", isDemo: false };
-  if (filter === "lead") where.status = "LEAD";
-  if (filter === "active" || filter === "support") where.status = "ACTIVE";
-  if (filter === "inactive") where.status = { in: ["PAUSED", "EXPIRED"] };
+export const LEARNER_SORTS = {
+  newest: "Mới tạo",
+  ending: "Hết hạn sớm nhất",
+  name: "Tên A–Z",
+} as const;
+
+export type LearnerSort = keyof typeof LEARNER_SORTS;
+
+export function isLearnerSort(value: unknown): value is LearnerSort {
+  return typeof value === "string" && value in LEARNER_SORTS;
+}
+
+const LEARNER_ORDER: Record<LearnerSort, Prisma.UserOrderByWithRelationInput[]> = {
+  newest: [{ createdAt: "desc" }],
+  ending: [{ accessEndsAt: { sort: "asc", nulls: "last" } }, { createdAt: "desc" }],
+  name: [{ name: "asc" }],
+};
+
+/** `consultantId`: a staff id, "none" for unassigned learners, or empty for everyone. */
+export async function listLearners(
+  filter: LearnerFilter = "all",
+  q = "",
+  consultantId = "",
+  sort: LearnerSort = "newest",
+): Promise<LearnerRow[]> {
+  const now = new Date();
+  const and: Prisma.UserWhereInput[] = [{ role: "LEARNER", isDemo: false }];
+  if (filter === "lead") and.push({ status: "LEAD" });
+  if (filter === "active" || filter === "support") and.push({ status: "ACTIVE" });
+  if (filter === "inactive") and.push({ status: { in: ["PAUSED", "EXPIRED"] } });
+  if (filter === "expiring") {
+    const soon = new Date(now.getTime() + EXPIRING_SOON_DAYS * 86_400_000);
+    and.push({ status: "ACTIVE", accessEndsAt: { gt: now, lte: soon } });
+  }
+  if (filter === "expired") {
+    and.push({ OR: [{ status: "EXPIRED" }, { status: { not: "LEAD" }, accessEndsAt: { lte: now } }] });
+  }
+  if (filter === "unlimited") and.push({ status: { in: ["ACTIVE", "PAUSED"] }, accessEndsAt: null });
+  if (consultantId === "none") and.push({ consultantId: null });
+  else if (consultantId) and.push({ consultantId });
   const term = q.trim();
   if (term) {
-    where.OR = [
-      { name: { contains: term, mode: "insensitive" } },
-      { email: { contains: term, mode: "insensitive" } },
-      { phone: { contains: term } },
-    ];
+    and.push({
+      OR: [
+        { name: { contains: term, mode: "insensitive" } },
+        { email: { contains: term, mode: "insensitive" } },
+        { phone: { contains: term } },
+      ],
+    });
   }
-  const rows = (await prisma.user.findMany({ where, select: LIST_SELECT, orderBy: { createdAt: "desc" }, take: 300 })).map(toRow);
+  const where: Prisma.UserWhereInput = { AND: and };
+  const rows = (await prisma.user.findMany({ where, select: LIST_SELECT, orderBy: LEARNER_ORDER[sort], take: 300 })).map(toRow);
   return filter === "support" ? rows.filter((r) => r.supportReasons.length) : rows;
 }
 
