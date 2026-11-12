@@ -351,10 +351,3 @@ model ShadowingRecording {
   attempt   ShadowingAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   data      Bytes
 }
-
-/// Global dynamic application settings (e.g. API keys configured from DB/Admin).
-model AppSetting {
-  key       String   @id
-  value     String
-  updatedAt DateTime @updatedAt
-}
