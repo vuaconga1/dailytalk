@@ -18,8 +18,14 @@ export const EXPIRING_SOON_DAYS = 7;
 /** Self-registration requires 8+ characters; an admin creating an account may set a shorter one. */
 export const MIN_PASSWORD = 8;
 export const ADMIN_MIN_PASSWORD = 3;
-/** Temporary: activate a LEAD learner as soon as onboarding builds their plan. Set false to require staff activation again. */
-export const AUTO_ACTIVATE_ON_ONBOARD = true;
+/** Study days open to a LEAD (not yet paid) learner. */
+export const TRIAL_STUDY_DAYS = 1;
+/**
+ * QR payment flow (trial → /payment → auto-activation). Off unless PAYMENT_ENABLED=true:
+ * then a LEAD learner is activated for DEFAULT_PACKAGE_DAYS as soon as onboarding builds their plan.
+ * Server-only: client bundles always see `false`.
+ */
+export const PAYMENT_ENABLED = process.env.PAYMENT_ENABLED?.trim() === "true";
 
 export const ROLE_LABELS: Record<Role, string> = {
   LEARNER: "Học viên",
@@ -63,9 +69,14 @@ export function isLocked(user: Pick<SessionUser, "role" | "isDemo" | "lockAt">, 
 
 type Learner = Pick<SessionUser, "isDemo" | "status" | "accessEndsAt">;
 
+/** Registered but not paid yet: only the free trial session is open. */
+export function isTrial(user: Pick<SessionUser, "isDemo" | "status">): boolean {
+  return PAYMENT_ENABLED && user.status === "LEAD" && !user.isDemo;
+}
+
 export function hasActiveAccess(user: Learner, now = new Date()): boolean {
   if (user.isDemo) return true;
-  if (user.status === "PAUSED") return false;
+  if (user.status === "PAUSED" || (PAYMENT_ENABLED && user.status === "LEAD")) return false;
   if (user.status === "EXPIRED" && user.accessEndsAt && user.accessEndsAt <= now) return false;
   return !user.accessEndsAt || user.accessEndsAt > now;
 }
@@ -76,8 +87,8 @@ export function daysLeft(accessEndsAt: Date | null, now = new Date()): number | 
   return Math.max(0, Math.ceil((accessEndsAt.getTime() - now.getTime()) / 86_400_000));
 }
 
-/** Whether the learner may open study day `day` (all active learners can study all days). */
-export function canStudyDay(user: Learner, day?: number): boolean {
-  void day;
+/** Whether the learner may open study day `day`: trial learners get the first day(s), active learners all days. */
+export function canStudyDay(user: Learner, day: number): boolean {
+  if (isTrial(user)) return day <= TRIAL_STUDY_DAYS;
   return hasActiveAccess(user);
 }

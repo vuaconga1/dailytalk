@@ -19,9 +19,7 @@ export const POST = route(async (req) => {
         email,
         name,
         passwordHash,
-        status: "ACTIVE",
-        activatedAt: new Date(),
-        packageName: "Toàn diện",
+        status: "LEAD",
       },
     })
     .catch((error: unknown) => {

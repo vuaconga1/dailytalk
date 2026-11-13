@@ -32,7 +32,7 @@ export function ZaloLinkCard({ initial }: { initial: ZaloStatus }) {
 
   return (
     <article className="card mt-5">
-      <div className="mb-2 flex items-center justify-between gap-3">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-lg font-bold">Nhắc học qua Zalo</h3>
         <span className={`badge ${state.linked && state.followed ? "" : "badge-gold"}`}>
           {state.linked ? (state.followed ? "Đã liên kết" : "Đã bỏ quan tâm OA") : "Chưa liên kết"}

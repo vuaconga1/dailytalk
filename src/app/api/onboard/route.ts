@@ -1,5 +1,5 @@
 import { authedRoute, json, readJson } from "@/server/http/api";
-import { AUTO_ACTIVATE_ON_ONBOARD, DEFAULT_PACKAGE_DAYS } from "@/domain/access";
+import { DEFAULT_PACKAGE_DAYS, isTrial, PAYMENT_ENABLED } from "@/domain/access";
 import { classify } from "@/domain/classify";
 import { buildPlan } from "@/domain/curriculum";
 import { Prisma } from "@/generated/prisma/client";
@@ -10,7 +10,9 @@ import type { LearnerProfile } from "@/domain/types";
 
 /** Confirmed profile → classification → 30-day reference roadmap from the authored curriculum. */
 export const POST = authedRoute(async (req, user) => {
-  if (user.plan && isCurrentProfile(user.profile)) {
+  // Before paying, a trial learner may revise the profile; afterwards the roadmap is kept to preserve progress.
+  const editing = Boolean(user.plan && isCurrentProfile(user.profile));
+  if (editing && !isTrial(user)) {
     throw new Problem("Đã có lộ trình. Lộ trình hiện tại được giữ để bảo toàn tiến độ.", 409);
   }
   const body = await readJson(req);
@@ -21,7 +23,7 @@ export const POST = authedRoute(async (req, user) => {
   const plan = buildPlan(profile);
   const now = new Date();
   const activation =
-    AUTO_ACTIVATE_ON_ONBOARD && user.status === "LEAD" && !user.isDemo
+    !PAYMENT_ENABLED && user.status === "LEAD" && !user.isDemo
       ? {
           status: "ACTIVE" as const,
           packageName: `Gói ${DEFAULT_PACKAGE_DAYS} ngày`,
@@ -31,7 +33,9 @@ export const POST = authedRoute(async (req, user) => {
         }
       : {};
   const data = { name, profile, plan, planSource: "curriculum", ...activation };
-  if (user.plan) {
+  if (editing) {
+    await prisma.user.update({ where: { id: user.id }, data });
+  } else if (user.plan) {
     // Old-survey learner: their sessions used the retired lesson format, so the journey restarts.
     await prisma.$transaction([
       prisma.attempt.deleteMany({ where: { userId: user.id } }),
@@ -44,5 +48,5 @@ export const POST = authedRoute(async (req, user) => {
     });
     if (!count) throw new Problem("Lộ trình đã được tạo.", 409);
   }
-  return json({ ok: true, classification });
+  return json({ ok: true, classification, next: isTrial(user) ? "/payment" : "/onboarding/result" });
 });

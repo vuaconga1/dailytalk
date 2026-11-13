@@ -20,7 +20,7 @@ enum Role {
 }
 
 enum AccountStatus {
-  /// Đã đăng ký; được khảo sát và học thử 1 buổi, chờ chuyên viên kích hoạt
+  /// Đã đăng ký; được khảo sát và học thử 1 buổi, chờ thanh toán (hoặc chuyên viên kích hoạt)
   LEAD
   ACTIVE
   PAUSED
@@ -70,6 +70,7 @@ model User {
   weeklyReports     WeeklyReport[]
   notesAbout        StaffNote[]        @relation("NoteLearner")
   notesWritten      StaffNote[]        @relation("NoteAuthor")
+  payments          Payment[]
 
   @@index([role, status])
   @@index([consultantId])
@@ -272,6 +273,44 @@ model StaffNote {
   createdAt DateTime @default(now())
 
   @@index([learnerId, createdAt])
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+}
+
+/// One QR bank-transfer order. `code` is the transfer message that matches incoming transfers to it.
+model Payment {
+  id        String         @id @default(cuid())
+  code      String         @unique
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  months    Int
+  /// VND
+  amount    Int
+  status    PaymentStatus  @default(PENDING)
+  paidAt    DateTime?
+  createdAt DateTime       @default(now())
+  transfers BankTransfer[]
+
+  @@index([userId, status])
+}
+
+/// Incoming transfer reported by the bank webhook (SePay); `id` makes each report idempotent.
+model BankTransfer {
+  /// "<provider>:<transaction id>"
+  id        String   @id
+  paymentId String?
+  payment   Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  /// VND
+  amount    Int
+  content   String
+  reference String?
+  raw       Json
+  createdAt DateTime @default(now())
+
+  @@index([paymentId])
 }
 
 enum ShadowingStatus {

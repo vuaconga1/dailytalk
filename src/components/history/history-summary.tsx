@@ -84,27 +84,75 @@ export function HistorySummary({
   const selectedMonthLabel =
     monthOptions.find((m) => m.value === selectedMonth)?.label ?? "Toàn bộ lộ trình";
 
+  const metrics: { label: string; icon: string; value: string | number; unit: string; note: string; progress: number; gold?: boolean }[] = [
+    {
+      label: `Thời gian học T${minutesMonthNum}/${minutesYear}`,
+      icon: "⏱",
+      value: monthMinutes,
+      unit: "phút",
+      note:
+        selectedMonth === "all"
+          ? `Tổng toàn khóa: ${formatHours(totalMinutes)}`
+          : monthMinutes >= 60
+            ? `≈ ${formatHours(monthMinutes)}`
+            : `Mục tiêu ${monthTargetMinutes} phút/tháng`,
+      progress: minutesProgress,
+    },
+    {
+      label: "Tiến độ khóa",
+      icon: "🏁",
+      value: completedSessions,
+      unit: "/ 30 buổi",
+      note: `${programProgress}% lộ trình${inProgressSessions > 0 ? ` · ${inProgressSessions} đang học` : ""}`,
+      progress: programProgress,
+    },
+    {
+      label: "Chuỗi kiên trì",
+      icon: "🔥",
+      value: streak,
+      unit: "ngày liên tiếp",
+      note: streak > 0 ? "Duy trì thói quen 15p mỗi ngày" : "Học ngay hôm nay để bắt đầu chuỗi",
+      progress: Math.round((Math.min(streak, 7) / 7) * 100),
+      gold: true,
+    },
+    {
+      label: "Luyện nói AI",
+      icon: "🎙",
+      value: totalVoiceTurns,
+      unit: "lượt nói",
+      note: totalTurns > 0 ? `Trên tổng số ${totalTurns} lượt phản xạ` : "Tương tác giọng với AI Coach",
+      progress: totalTurns > 0 ? Math.round((totalVoiceTurns / totalTurns) * 100) : 0,
+    },
+    {
+      label: "Tỷ lệ đạt chuẩn",
+      icon: "🎯",
+      value: `${achievementRate}%`,
+      unit: "mục tiêu",
+      note: `${achievedSessions}/${completedSessions || 1} buổi đạt chuẩn đàm thoại`,
+      progress: achievementRate,
+      gold: true,
+    },
+  ];
+
   return (
-    <section className="mb-8 rounded-3xl border border-[#cbd5e1]/70 bg-gradient-to-b from-white to-[#f8faff] p-5 sm:p-7 shadow-[0_4px_24px_-4px_rgba(9,23,52,0.06)]">
-      {/* Top Header & Month Filter Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5 mb-6">
-        <div>
-          <div className="eyebrow !mb-1 flex items-center gap-2">
-            <span className="size-2 rounded-full bg-gold animate-pulse-glow" />
-            BÁO CÁO TIẾN ĐỘ & PHẢN XẠ
+    <section className="mb-8 rounded-2xl border-2 border-black bg-white p-4 shadow-(--ww-frame-shadow) sm:p-6">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-4 border-b-2 border-black pb-4">
+        <div className="min-w-0">
+          <div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gold">
+            <span className="size-2 rounded-full bg-gold" />
+            Báo cáo tiến độ & phản xạ
           </div>
-          <h2 className="text-xl sm:text-2xl font-black text-navy tracking-tight">
+          <h2 className="text-xl font-extrabold tracking-tight text-navy sm:text-2xl">
             Tổng kết tháng: {selectedMonthLabel}
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+          <p className="mt-0.5 text-xs text-ink-secondary sm:text-sm">
             Đánh giá tổng quát hiệu suất luyện phản xạ và tích lũy kỹ năng giao tiếp.
           </p>
         </div>
 
-        {/* Month Dropdown / Filter */}
         {monthOptions.length > 1 && (
           <div className="flex items-center gap-2">
-            <label htmlFor="month-select" className="text-xs font-bold text-slate-500 uppercase tracking-wider hidden sm:inline">
+            <label htmlFor="month-select" className="hidden text-xs font-bold uppercase tracking-wider text-black sm:inline">
               Xem theo kỳ:
             </label>
             <div className="relative">
@@ -112,7 +160,7 @@ export function HistorySummary({
                 id="month-select"
                 value={selectedMonth}
                 onChange={(e) => onSelectMonth(e.target.value)}
-                className="appearance-none rounded-xl border border-slate-200 bg-white px-3.5 py-2 pr-9 text-xs font-bold text-navy shadow-xs focus:border-navy focus:outline-none transition-all cursor-pointer hover:border-slate-300"
+                className="min-h-10 cursor-pointer appearance-none rounded-xl border-[1.5px] border-black bg-white px-3.5 py-2 pr-9 text-xs font-bold text-navy focus:outline-none focus:ring-2 focus:ring-gold/50"
               >
                 {monthOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -121,7 +169,7 @@ export function HistorySummary({
                 ))}
               </select>
               <svg
-                className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+                className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-navy"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -133,167 +181,50 @@ export function HistorySummary({
         )}
       </div>
 
-      {/* Main Metric Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 sm:gap-4 mb-6">
-        {/* Metric 0: Thời gian học trong tháng */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-4.5 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">
-              Thời gian học T{minutesMonthNum}/{minutesYear}
-            </span>
-            <span className="grid size-7 place-items-center rounded-lg bg-violet-50 text-violet-600 text-sm">
-              ⏱
-            </span>
-          </div>
-          <div className="flex items-baseline gap-1.5">
-            <strong className="text-2xl sm:text-3xl font-black text-violet-600">{monthMinutes}</strong>
-            <span className="text-sm font-semibold text-slate-400">phút</span>
-          </div>
-          <p className="mt-1 text-xs text-slate-500">
-            {selectedMonth === "all"
-              ? `Tổng toàn khóa: ${formatHours(totalMinutes)}`
-              : monthMinutes >= 60
-                ? `≈ ${formatHours(monthMinutes)}`
-                : `Mục tiêu ${monthTargetMinutes} phút/tháng`}
-          </p>
-          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-            <div
-              className="h-full rounded-full bg-violet-500 transition-all duration-500"
-              style={{ width: `${minutesProgress}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Metric 1: Hoàn thành lộ trình */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-4.5 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Tiến độ khóa</span>
-            <span className="grid size-7 place-items-center rounded-lg bg-blue-soft text-blue-accent text-sm">
-              🏁
-            </span>
-          </div>
-          <div className="flex items-baseline gap-1.5">
-            <strong className="text-2xl sm:text-3xl font-black text-navy">
-              {completedSessions}
-            </strong>
-            <span className="text-sm font-semibold text-slate-400">/ 30 buổi</span>
-          </div>
-          <p className="mt-1 text-xs text-slate-500">
-            {programProgress}% lộ trình{inProgressSessions > 0 ? ` · ${inProgressSessions} đang học` : ""}
-          </p>
-          {/* Progress Bar */}
-          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-            <div
-              className="h-full rounded-full bg-navy transition-all duration-500"
-              style={{ width: `${programProgress}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Metric 2: Chuỗi ngày liên tiếp */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-4.5 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Chuỗi kiên trì</span>
-            <span className="grid size-7 place-items-center rounded-lg bg-amber-50 text-gold text-sm">
-              🔥
-            </span>
-          </div>
-          <div className="flex items-baseline gap-1.5">
-            <strong className="text-2xl sm:text-3xl font-black text-gold">
-              {streak}
-            </strong>
-            <span className="text-sm font-semibold text-slate-400">ngày liên tiếp</span>
-          </div>
-          <p className="mt-1 text-xs text-slate-500">
-            {streak > 0 ? "Duy trì thói quen 15p mỗi ngày" : "Học ngay hôm nay để bắt đầu chuỗi"}
-          </p>
-          <div className="mt-3 flex items-center gap-1">
-            {Array.from({ length: 7 }, (_, i) => (
-              <span
-                key={i}
-                className={`h-2 flex-1 rounded-full ${
-                  i < Math.min(streak, 7) ? "bg-gold" : "bg-slate-100"
-                }`}
+      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        {metrics.map((m) => (
+          <div key={m.label} className="flex min-w-0 flex-col rounded-xl border-[1.5px] border-black bg-white p-4">
+            <div className="mb-3 flex items-center justify-between gap-2 border-b-[1.5px] border-black pb-2">
+              <span className="min-w-0 text-[11px] font-bold uppercase tracking-wider text-black">{m.label}</span>
+              <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-gray-100 text-sm" aria-hidden>
+                {m.icon}
+              </span>
+            </div>
+            <div className="flex flex-wrap items-baseline gap-x-1.5">
+              <strong className={`text-3xl font-black ${m.gold ? "text-gold" : "text-navy"}`}>{m.value}</strong>
+              <span className="text-sm font-semibold text-ink-secondary">{m.unit}</span>
+            </div>
+            <p className="mt-1 flex-1 text-xs text-ink-secondary">{m.note}</p>
+            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-100">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${m.gold ? "bg-gold" : "bg-gray-500"}`}
+                style={{ width: `${m.progress}%` }}
               />
-            ))}
+            </div>
           </div>
-        </div>
-
-        {/* Metric 3: Luyện nói bằng giọng */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-4.5 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Luyện nói AI</span>
-            <span className="grid size-7 place-items-center rounded-lg bg-teal-soft text-teal text-sm">
-              🎙
-            </span>
-          </div>
-          <div className="flex items-baseline gap-1.5">
-            <strong className="text-2xl sm:text-3xl font-black text-blue-accent">
-              {totalVoiceTurns}
-            </strong>
-            <span className="text-sm font-semibold text-slate-400">lượt nói</span>
-          </div>
-          <p className="mt-1 text-xs text-slate-500">
-            {totalTurns > 0 ? `Trên tổng số ${totalTurns} lượt phản xạ` : "Tương tác giọng với AI Coach"}
-          </p>
-          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-            <div
-              className="h-full rounded-full bg-blue-accent transition-all duration-500"
-              style={{
-                width: totalTurns > 0 ? `${Math.round((totalVoiceTurns / totalTurns) * 100)}%` : "0%",
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Metric 4: Tỷ lệ đạt mục tiêu */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-4.5 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Tỷ lệ đạt chuẩn</span>
-            <span className="grid size-7 place-items-center rounded-lg bg-emerald-50 text-emerald-600 text-sm">
-              🎯
-            </span>
-          </div>
-          <div className="flex items-baseline gap-1.5">
-            <strong className="text-2xl sm:text-3xl font-black text-emerald-600">
-              {achievementRate}%
-            </strong>
-            <span className="text-sm font-semibold text-slate-400">mục tiêu</span>
-          </div>
-          <p className="mt-1 text-xs text-slate-500">
-            {achievedSessions}/{completedSessions || 1} buổi đạt chuẩn đàm thoại
-          </p>
-          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-            <div
-              className="h-full rounded-full bg-emerald-500 transition-all duration-500"
-              style={{ width: `${achievementRate}%` }}
-            />
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* AI Coach Monthly Highlight Box */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-navy to-[#132752] p-4.5 sm:p-5 text-white shadow-md">
-        <div className="flex items-start gap-3.5">
-          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/10 text-amber-300 text-lg border border-white/15">
+      <div className="flex flex-col justify-between gap-4 rounded-xl border-l-8 border-gold bg-gray-100 p-4 text-navy sm:p-5 md:flex-row md:items-center">
+        <div className="flex min-w-0 items-start gap-3.5">
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-gray-200 bg-white text-lg" aria-hidden>
             💡
           </span>
-          <div>
-            <div className="text-xs font-extrabold tracking-wider text-amber-300 uppercase">
+          <div className="min-w-0">
+            <div className="text-xs font-extrabold uppercase tracking-wider text-amber-600">
               Nhận định tiến bộ từ WeWIN AI Coach
             </div>
-            <p className="mt-1 text-xs sm:text-sm text-slate-200 leading-relaxed max-w-2xl">
+            <p className="mt-1 max-w-2xl text-sm font-medium leading-relaxed text-navy">
               {insightMessage}
             </p>
           </div>
         </div>
 
-        {/* Accumulated Skills Badge */}
         {(totalWords > 0 || totalFrames > 0) && (
-          <div className="flex items-center gap-3 shrink-0 pt-2 md:pt-0 border-t border-white/10 md:border-t-0">
-            <div className="text-right">
-              <span className="block text-[11px] text-slate-300">Tích lũy toàn khóa</span>
-              <div className="text-xs font-bold text-amber-300">
+          <div className="flex shrink-0 items-center gap-3 border-t border-gray-300 pt-3 md:border-t-0 md:pt-0">
+            <div className="md:text-right">
+              <span className="block text-[11px] text-muted">Tích lũy toàn khóa</span>
+              <div className="text-sm font-bold text-amber-600">
                 {totalWords} từ vựng · {totalFrames} mẫu câu
               </div>
             </div>

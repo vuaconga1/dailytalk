@@ -10,10 +10,10 @@ export default async function ShadowingIndexPage() {
   const catalog = await listCatalog();
   if (catalog.length) redirect(`/shadowing/${catalog[0].slug}`);
   return (
-    <section className="card mx-auto max-w-[640px] text-center">
-      <div className="eyebrow">SHADOWING</div>
-      <h1 className="page-title mb-2 !text-[28px]">Chưa có bài luyện nào.</h1>
-      <p className="text-muted">WeWIN đang chuẩn bị các video luyện shadowing. Bạn quay lại sau nhé!</p>
+    <section className="mx-auto w-full max-w-[640px] rounded-2xl border-2 border-black bg-white p-6 text-center shadow-(--ww-frame-shadow) sm:p-8">
+      <div className="mb-2 text-xs font-bold tracking-wider text-gold uppercase">Shadowing</div>
+      <h1 className="mb-3 border-b-2 border-black pb-3 text-2xl font-extrabold text-navy md:text-[28px]">Chưa có bài luyện nào.</h1>
+      <p className="text-ink-secondary">WeWIN đang chuẩn bị các video luyện shadowing. Bạn quay lại sau nhé!</p>
     </section>
   );
 }

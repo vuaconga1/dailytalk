@@ -1,6 +1,6 @@
 import "server-only";
 import type { Practice, Prisma } from "@/generated/prisma/client";
-import { canStudyDay } from "@/domain/access";
+import { canStudyDay, isTrial } from "@/domain/access";
 import type { PracticeView, Turn } from "@/domain/types";
 import { Problem } from "@/lib/errors";
 import type { SessionUser } from "@/server/auth";
@@ -10,6 +10,11 @@ export const DAILY_SECONDS = 180;
 export const MAX_TURNS = 20;
 /** Testing switch (on unless OPEN_ALL_DAYS=false): every plan day is open, in any order, repeatable, with no daily limits. */
 export const OPEN_ALL_DAYS = process.env.OPEN_ALL_DAYS?.trim() !== "false";
+
+/** The testing switch never opens paid days to a trial learner. */
+export function openAllDaysFor(user: Pick<SessionUser, "isDemo" | "status">): boolean {
+  return OPEN_ALL_DAYS && !isTrial(user);
+}
 /** A crashed request must not lock a practice session forever. */
 const STALE_LOCK_MS = 90_000;
 /** Speech recorded right up to the deadline is uploaded, transcribed and saved after it. */
@@ -34,8 +39,13 @@ export async function ownedAttempt(user: SessionUser, attemptId: unknown, requir
         })
       : null;
   if (!attempt) throw new Problem("Không tìm thấy buổi học.", 404);
-  if (requireAccess && !OPEN_ALL_DAYS && !canStudyDay(user, attempt.day)) {
-    throw new Problem("Tài khoản chưa được kích hoạt hoặc đã hết hạn. Vui lòng liên hệ chuyên viên WeWIN.", 403);
+  if (requireAccess && !openAllDaysFor(user) && !canStudyDay(user, attempt.day)) {
+    throw new Problem(
+      isTrial(user)
+        ? "Buổi học thử đã kết thúc. Hãy thanh toán gói học để mở toàn bộ lộ trình."
+        : "Tài khoản chưa được kích hoạt hoặc đã hết hạn. Vui lòng liên hệ chuyên viên WeWIN.",
+      403,
+    );
   }
   return attempt;
 }

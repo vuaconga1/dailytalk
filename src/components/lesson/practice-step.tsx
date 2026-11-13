@@ -6,6 +6,7 @@ import { framesUsed } from "@/domain/frames";
 import { AI_UNAVAILABLE } from "@/lib/errors";
 import type { Lesson, PracticeView, Turn } from "@/domain/types";
 import type { TurnResult } from "./lesson-player";
+import { SectionHeading } from "@/components/section-heading";
 import { useAction } from "./use-action";
 import { speechRecognition, type useMedia } from "./use-media";
 
@@ -150,61 +151,82 @@ export function PracticeStep({ lesson, practice, expired, remaining, demo, media
 
   return (
     <>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-[25px] font-bold tracking-[-0.5px]">Đến lượt bạn nói.</h2>
-        <span className="badge badge-gold">3 PHÚT</span>
-      </div>
-      <p className="mb-4 text-muted">
-        Tình huống: bạn nói chuyện với <b className="text-ink">{lesson.roleplay.role}</b>. Nhiệm vụ của bạn: {lesson.roleplay.goal}
-      </p>
-      <div className="note">Giữ nút ghi âm và nói bằng tiếng Anh, thả ra khi nói xong. Lời bạn nói sẽ được chuyển thành chữ bên dưới.</div>
-      <div className="mt-4 rounded-xl border border-line p-4">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <b className="text-sm">Mẫu câu cần dùng</b>
-          <span className="badge">
-            {used.filter(Boolean).length}/{lesson.frames.length}
-          </span>
+      <SectionHeading level={2} title="Đến lượt bạn nói." badge={<span className="badge badge-gold">3 PHÚT</span>} />
+
+      <div className="mb-10 grid gap-3 md:grid-cols-2">
+        <div className="min-w-0 rounded-xl border-[1.5px] border-black bg-navy-soft/60 p-4 text-sm leading-relaxed">
+          <p className="mb-2 border-b-[1.5px] border-black pb-2 text-[11px] font-bold uppercase tracking-wider text-black">Tình huống</p>
+          <p className="text-ink">
+            Bạn nói chuyện với <b className="text-navy">{lesson.roleplay.role}</b>.
+          </p>
+          <p className="mt-2 rounded-lg bg-white px-3 py-2 font-semibold text-navy">
+            <span className="mr-1 text-gold">★</span>Nhiệm vụ: {lesson.roleplay.goal}
+          </p>
         </div>
-        <ul className="grid gap-1.5 text-sm md:grid-cols-2">
-          {lesson.frames.map((f, i) => (
-            <li key={f} className={used[i] ? "font-semibold text-teal" : "text-muted"}>
-              {used[i] ? "✓" : "○"} {f}
-            </li>
-          ))}
-        </ul>
+        <div className="min-w-0 rounded-xl border-[1.5px] border-black bg-white p-4">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border-b-[1.5px] border-black pb-2">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-black">Mẫu câu cần dùng</p>
+            <span className="badge badge-gold">
+              {used.filter(Boolean).length}/{lesson.frames.length}
+            </span>
+          </div>
+          <ul className="grid gap-1.5 text-sm">
+            {lesson.frames.map((f, i) => (
+              <li key={f} className={`flex items-start gap-2 ${used[i] ? "font-semibold text-navy" : "text-muted"}`}>
+                <span
+                  className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-full text-[10px] ${
+                    used[i] ? "bg-gold text-white" : "border-[1.5px] border-black"
+                  }`}
+                  aria-hidden
+                >
+                  {used[i] ? "✓" : ""}
+                </span>
+                <span className="min-w-0">{f}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
+      <SectionHeading index={1} title="Hội thoại với AI">
+        Giữ nút micro và nói bằng tiếng Anh, thả ra khi nói xong. Lời bạn nói sẽ hiện thành chữ bên dưới.
+      </SectionHeading>
 
       {!practice ? (
-        <div className="p-11 text-center text-muted">
-          <h3 className="mb-2 text-lg font-bold text-ink">Sẵn sàng cho tình huống hôm nay?</h3>
-          <p className="mb-4">Chuẩn bị micro trước khi bắt đầu.</p>
-          <button type="button" className="btn" disabled={pending} onClick={() => run(onStart)}>
+        <div className="rounded-xl bg-navy px-5 py-10 text-center text-white sm:py-12">
+          <h3 className="mb-2 text-lg font-bold">Sẵn sàng cho tình huống hôm nay?</h3>
+          <p className="mb-5 text-sm text-white/70">Chuẩn bị micro trước khi bắt đầu.</p>
+          <button type="button" className="btn btn-gold" disabled={pending} onClick={() => run(onStart)}>
             Bắt đầu phiên 3 phút →
           </button>
         </div>
       ) : (
         <>
-          <p className="mt-5 text-sm text-muted">
-            Gợi ý mở đầu: <i className="text-ink">“{opening}”</i>
+          <p className="rounded-lg border-l-4 border-gold bg-gold-soft/50 px-3 py-2 text-sm text-ink-secondary">
+            <b className="text-navy">Gợi ý mở đầu:</b> <i className="font-medium text-ink">“{opening}”</i>
           </p>
           <div
             ref={boxRef}
-            className="my-4 flex min-h-[160px] max-h-[390px] flex-col gap-3 overflow-auto rounded-xl bg-surface p-4"
+            className="my-4 flex min-h-[160px] max-h-[390px] flex-col gap-3 overflow-auto rounded-xl border-[1.5px] border-black bg-navy-soft/40 p-3 sm:p-4"
             aria-live="polite"
           >
             {shown.length === 0 && !draft && <p className="m-auto text-sm text-muted">Nội dung bạn nói sẽ hiện ở đây.</p>}
             {shown.map((t, i) =>
               t.role === "user" ? (
-                <p key={i} className="min-w-0 self-end rounded-[14px_14px_3px_14px] bg-[#dff1eb] px-[18px] py-3 leading-[1.55]">
+                <p key={i} className="min-w-0 max-w-[85%] self-end rounded-[14px_14px_3px_14px] bg-navy px-4 py-2.5 leading-[1.55] text-white">
                   {t.text}
                 </p>
               ) : (
-                <p key={i} className="min-w-0 self-start rounded-[14px_14px_14px_3px] border border-line bg-white px-[18px] py-3 leading-[1.55]">
+                <p
+                  key={i}
+                  className="min-w-0 max-w-[85%] self-start rounded-[14px_14px_14px_3px] border-[1.5px] border-black bg-white px-4 py-2.5 leading-[1.55] text-ink"
+                >
                   {t.text}
                 </p>
               ),
             )}
-            {draft && <p className="min-w-0 self-end rounded-[14px_14px_3px_14px] bg-[#dff1eb]/60 px-[18px] py-3 italic">{draft}</p>}
+            {draft && (
+              <p className="min-w-0 max-w-[85%] self-end rounded-[14px_14px_3px_14px] bg-navy/60 px-4 py-2.5 italic text-white">{draft}</p>
+            )}
           </div>
 
           {!ended && canVoice && (
@@ -212,7 +234,7 @@ export function PracticeStep({ lesson, practice, expired, remaining, demo, media
               <button
                 type="button"
                 className={`grid size-24 touch-none select-none place-items-center rounded-full text-3xl text-white shadow-md transition ${
-                  recording ? "scale-110 bg-red-500 ring-8 ring-red-500/20" : "bg-navy hover:bg-navy/90"
+                  recording ? "scale-110 bg-red-500 ring-8 ring-red-500/20" : "bg-navy ring-4 ring-gold/60 hover:bg-navy-light"
                 } disabled:opacity-50`}
                 aria-label="Giữ để nói"
                 disabled={busy}
@@ -226,7 +248,7 @@ export function PracticeStep({ lesson, practice, expired, remaining, demo, media
               >
                 {recording ? "■" : "🎙"}
               </button>
-              <b className="text-sm">{recording ? "Đang ghi âm… thả để dừng" : busy ? "Đang xử lý…" : "Giữ để nói"}</b>
+              <b className="text-sm text-navy">{recording ? "Đang ghi âm… thả để dừng" : busy ? "Đang xử lý…" : "Giữ để nói"}</b>
             </div>
           )}
           {!canVoice && <div className="note">Trình duyệt chưa hỗ trợ ghi âm. Hãy dùng Chrome hoặc Edge.</div>}
@@ -235,15 +257,15 @@ export function PracticeStep({ lesson, practice, expired, remaining, demo, media
           </div>
 
           {ended && (
-            <div className="note mt-5 flex flex-wrap items-center justify-between gap-3">
-              <span>Phiên nói 3 phút đã kết thúc.</span>
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border-[1.5px] border-black bg-gold-soft/50 px-4 py-3 text-sm">
+              <b className="text-navy">Phiên nói 3 phút đã kết thúc.</b>
               <button type="button" className="btn btn-outline" disabled={pending} onClick={() => run(onStart)}>
                 ↺ Làm lại phiên 3 phút
               </button>
             </div>
           )}
-          <div className="mt-6 border-t border-line pt-5">
-            <button type="button" className="btn" disabled={pending || busy || recording} onClick={() => run(onFinish)}>
+          <div className="mt-10 border-t-2 border-black pt-6">
+            <button type="button" className="btn w-full sm:w-auto" disabled={pending || busy || recording} onClick={() => run(onFinish)}>
               {pending ? "Đang tổng kết…" : "Kết thúc & xem tổng kết →"}
             </button>
             <p className="legal mt-5">Hoàn thành phần từ vựng và shadowing trước khi xem tổng kết.</p>

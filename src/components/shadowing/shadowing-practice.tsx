@@ -412,7 +412,7 @@ export function ShadowingPractice({ exercise, catalog }: { exercise: PublicShado
           <VideoPanel player={player} title={exercise.title} level={exercise.level} duration={duration} cue={cue ?? null} locked={recordingNow} />
 
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="inline-flex rounded-xl border border-line bg-white p-1 shadow-xs" role="tablist" aria-label="Chế độ luyện">
+            <div className="inline-flex rounded-xl border-[1.5px] border-black bg-white p-1" role="tablist" aria-label="Chế độ luyện">
               {(
                 [
                   ["sentence", "Luyện từng câu"],
@@ -426,7 +426,7 @@ export function ShadowingPractice({ exercise, catalog }: { exercise: PublicShado
                   aria-selected={mode === value}
                   onClick={() => switchMode(value)}
                   className={`min-h-10 rounded-lg px-4 text-sm font-semibold transition ${
-                    mode === value ? "bg-navy text-white shadow-sm" : "text-muted hover:text-navy"
+                    mode === value ? "bg-navy text-white shadow-sm" : "text-navy hover:bg-navy-soft/60"
                   }`}
                 >
                   {label}
@@ -446,21 +446,25 @@ export function ShadowingPractice({ exercise, catalog }: { exercise: PublicShado
             )}
           </div>
 
-          <section className="min-w-0 rounded-2xl border border-line bg-white p-4 shadow-[0_4px_20px_-4px_rgba(20,40,90,0.05)] sm:p-5">
-            <div className="mb-4 flex items-center gap-3">
-              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-700">
+          <section className="min-w-0 rounded-2xl border-2 border-black bg-white p-4 shadow-(--ww-frame-shadow) sm:p-5">
+            <div className="mb-4 flex flex-wrap items-center gap-3 border-b-2 border-black pb-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-navy text-gold-light">
                 <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
                 </svg>
               </span>
-              <b className="flex-1 text-sm tracking-wider text-navy uppercase">{mode === "sentence" ? "Ghi âm câu này" : "Đọc cả bài"}</b>
-              <span className="text-xs font-semibold text-muted">
+              <b className="min-w-0 flex-1 text-base font-extrabold tracking-wide text-navy uppercase">{mode === "sentence" ? "Ghi âm câu này" : "Đọc cả bài"}</b>
+              <span className="badge badge-gold">
                 {mode === "sentence" ? `Câu ${index + 1} / ${lines.length}` : `Tối đa ${clock(exercise.maxRecordSeconds)}`}
               </span>
             </div>
 
-            {exercise.instructions && <p className="note mb-4 !text-xs">{exercise.instructions}</p>}
-            {supported === false && <p className="note mb-4 !border-amber-200 !bg-amber-50 !text-xs">{CAPTURE_MESSAGES.unsupported}</p>}
+            {exercise.instructions && (
+              <p className="mb-4 rounded-lg border-l-4 border-gold bg-navy-soft/50 px-3 py-2 text-xs leading-relaxed text-ink">{exercise.instructions}</p>
+            )}
+            {supported === false && (
+              <p className="mb-4 rounded-lg border-[1.5px] border-black bg-gold-soft/60 px-3 py-2 text-xs text-ink">{CAPTURE_MESSAGES.unsupported}</p>
+            )}
 
             {mode === "sentence" && line && (
               <div className="grid gap-4">
@@ -505,20 +509,20 @@ export function ShadowingPractice({ exercise, catalog }: { exercise: PublicShado
                 ) : take ? (
                   <div className="grid gap-4">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="badge badge-success">Đã ghi âm xong</span>
+                      <span className="badge badge-navy">✓ Đã ghi âm xong</span>
                       <span className="text-xs text-muted">{clock(take.durationMs / 1000)}</span>
                     </div>
                     {take.url && <audio controls src={take.url} className="h-9 w-full" />}
                     <div>
-                      <div className="mb-1 text-[11px] font-bold tracking-wider text-muted uppercase">
+                      <div className="mb-1.5 text-[11px] font-bold tracking-wider text-black uppercase">
                         Văn bản hệ thống nghe được · {wordCount(take.text)} từ
                       </div>
-                      <p className="max-h-[220px] overflow-y-auto rounded-xl border border-line bg-slate-50 p-3 text-sm break-words text-slate-700">
+                      <p className="max-h-[220px] overflow-y-auto rounded-xl border-[1.5px] border-black bg-navy-soft/40 p-3 text-sm break-words text-ink">
                         {take.text || "—"}
                       </p>
                     </div>
                     {!take.text.trim() && (
-                      <p className="note !border-amber-200 !bg-amber-50 !text-xs">
+                      <p className="rounded-lg border-[1.5px] border-black bg-gold-soft/60 px-3 py-2 text-xs text-ink">
                         Chưa phát hiện giọng nói rõ ràng. Hãy ghi âm lại, nói to và rõ hơn.
                       </p>
                     )}
@@ -536,7 +540,7 @@ export function ShadowingPractice({ exercise, catalog }: { exercise: PublicShado
                   </div>
                 ) : (
                   <>
-                    <p className="text-sm text-muted">
+                    <p className="text-sm text-ink-secondary">
                       Xem video vài lần, rồi bấm micro và đọc liền mạch toàn bộ transcript ({lines.length} câu, {totalWords} từ). Hệ thống so khớp từng từ
                       và lưu kết quả vào lịch sử.
                     </p>
@@ -546,9 +550,9 @@ export function ShadowingPractice({ exercise, catalog }: { exercise: PublicShado
               </div>
             )}
 
-            {notice && <p className="note mt-4 !border-amber-200 !bg-amber-50 !text-xs">{notice}</p>}
+            {notice && <p className="mt-4 rounded-lg border-[1.5px] border-black bg-gold-soft/60 px-3 py-2 text-xs text-ink">{notice}</p>}
             {error && (
-              <p className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">
+              <p className="mt-4 rounded-xl border-[1.5px] border-rose-600 bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">
                 {error}
               </p>
             )}

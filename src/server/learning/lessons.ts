@@ -15,7 +15,7 @@ import { isDemo } from "@/server/ai/config";
 import { generateLesson, type DayTarget } from "@/server/ai/lesson";
 import type { SessionUser } from "@/server/auth";
 import { prisma } from "@/server/db";
-import { OPEN_ALL_DAYS, toPracticeView } from "./practice";
+import { openAllDaysFor, toPracticeView } from "./practice";
 import { logUsage, sha256, tryReserve } from "./usage";
 
 type AttemptRow = Prisma.AttemptGetPayload<{ include: { practice: true } }>;
@@ -279,7 +279,8 @@ export async function updateWorkingLevel(userId: string, profile: LearnerProfile
  */
 export async function getTodayAttempt(user: SessionUser, requestedDay?: number): Promise<AttemptView> {
   if (!user.plan || !user.profile) throw new Problem("Hãy hoàn thành khảo sát trước.");
-  if (OPEN_ALL_DAYS && requestedDay && Number.isInteger(requestedDay) && requestedDay >= 1 && requestedDay <= 30) {
+  const openAll = openAllDaysFor(user);
+  if (openAll && requestedDay && Number.isInteger(requestedDay) && requestedDay >= 1 && requestedDay <= 30) {
     const existing = await prisma.attempt.findUnique({
       where: { userId_day: { userId: user.id, day: requestedDay } },
       include: { practice: true },
@@ -292,11 +293,11 @@ export async function getTodayAttempt(user: SessionUser, requestedDay?: number):
     orderBy: { day: "desc" },
     include: { practice: true },
   });
-  if (last && (!last.completed || (!OPEN_ALL_DAYS && last.localDate === today) || last.day >= 30)) {
-    return toAttemptView(last, !OPEN_ALL_DAYS && last.completed && last.day < 30 && !canStudyDay(user, last.day + 1));
+  if (last && (!last.completed || (!openAll && last.localDate === today) || last.day >= 30)) {
+    return toAttemptView(last, !openAll && last.completed && last.day < 30 && !canStudyDay(user, last.day + 1));
   }
   const day = last ? last.day + 1 : 1;
-  if (last && !OPEN_ALL_DAYS && !canStudyDay(user, day)) return toAttemptView(last, true);
+  if (last && !openAll && !canStudyDay(user, day)) return toAttemptView(last, true);
   return openDay(user, day);
 }
 

@@ -41,22 +41,22 @@ export function ShadowingHistory({ slug, refreshKey, onPlaySample }: Props) {
   const best = items?.length ? Math.max(...items.map((i) => i.score)) : null;
 
   return (
-    <section className="rounded-2xl border border-line bg-white shadow-[0_4px_20px_-4px_rgba(20,40,90,0.05)]">
+    <section className="rounded-2xl border-2 border-black bg-white shadow-(--ww-frame-shadow)">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         className="flex min-h-[56px] w-full items-center justify-between gap-3 px-5 py-3 text-left"
       >
-        <span className="flex flex-wrap items-center gap-2">
-          <b className="text-sm tracking-wider text-navy uppercase">Lịch sử làm bài</b>
-          {items && <span className="badge !py-0.5">{items.length} lần</span>}
+        <span className="flex min-w-0 flex-wrap items-center gap-2">
+          <b className="text-base font-extrabold tracking-wide text-navy uppercase">Lịch sử làm bài</b>
+          {items && <span className="badge badge-navy !py-0.5">{items.length} lần</span>}
           {best !== null && <span className="badge badge-gold !py-0.5">🏆 {best}/100</span>}
         </span>
-        <span className={`text-muted transition-transform ${open ? "rotate-180" : ""}`}>▾</span>
+        <span className={`text-navy transition-transform ${open ? "rotate-180" : ""}`}>▾</span>
       </button>
       {open && (
-        <div className="border-t border-line px-5 py-4">
+        <div className="border-t-2 border-black px-4 py-4 sm:px-5">
           {error && <p className="form-error !mt-0 mb-3">{error}</p>}
           {!items && !error && <p className="text-sm text-muted">Đang tải…</p>}
           {items && !items.length && (
@@ -64,15 +64,15 @@ export function ShadowingHistory({ slug, refreshKey, onPlaySample }: Props) {
           )}
           <ul className="grid gap-2">
             {items?.map((item, i) => (
-              <li key={item.attemptId} className="rounded-xl border border-line">
+              <li key={item.attemptId} className="overflow-hidden rounded-xl border-[1.5px] border-black">
                 <div className="flex flex-wrap items-center gap-3 px-4 py-3">
                   <div className="min-w-0 flex-1">
                     <b className="text-sm text-navy">Lần {items.length - i}</b>
-                    <span className="ml-2 text-xs text-muted">{formatVnDateTime(new Date(item.createdAt))}</span>
-                    {item.hasRecording && <span className="badge ml-2 !px-2 !py-0 text-[10px]">Audio</span>}
+                    <span className="ml-2 text-xs text-ink-secondary">{formatVnDateTime(new Date(item.createdAt))}</span>
+                    {item.hasRecording && <span className="badge badge-gold ml-2 !px-2 !py-0 text-[10px]">Audio</span>}
                   </div>
-                  <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${TONE_BADGE[scoreTone(item.score)]}`}>{item.score}/100</span>
-                  <span className="text-xs text-muted">
+                  <span className={`rounded-full border-[1.5px] px-2.5 py-0.5 text-xs font-bold ${TONE_BADGE[scoreTone(item.score)]}`}>{item.score}/100</span>
+                  <span className="text-xs font-medium text-ink-secondary">
                     {item.correctCount}/{item.totalWords} từ
                   </span>
                   <button type="button" className="btn btn-outline !px-3 !py-1.5 text-xs" onClick={() => void view(item.attemptId)}>
@@ -80,7 +80,7 @@ export function ShadowingHistory({ slug, refreshKey, onPlaySample }: Props) {
                   </button>
                 </div>
                 {viewing?.id === item.attemptId && (
-                  <div className="border-t border-line p-4">
+                  <div className="border-t-[1.5px] border-black p-4">
                     {viewing.result ? <ShadowingResult result={viewing.result} onPlaySample={onPlaySample} /> : <p className="text-sm text-muted">Đang tải…</p>}
                   </div>
                 )}

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ApiForm } from "@/components/admin/api-form";
 import { TermFields } from "@/components/admin/term-fields";
-import { can, daysLeft } from "@/domain/access";
+import { can, daysLeft, PAYMENT_ENABLED } from "@/domain/access";
 import { learnerDetail, staffList } from "@/server/admin";
 import type { WeeklyHighlights } from "@/server/jobs";
 import { requireStaff } from "@/server/http/page-guards";
@@ -11,7 +11,7 @@ import { FREQUENCIES, labelOf, levelInfo } from "@/domain/profile-options";
 import { formatVnDate, vnDate } from "@/lib/time";
 import type { StudyPlan, Turn } from "@/domain/types";
 
-const STATUS_LABELS = { LEAD: "Chờ kích hoạt", ACTIVE: "Đang học", PAUSED: "Tạm dừng", EXPIRED: "Hết hạn" } as const;
+const STATUS_LABELS = { LEAD: PAYMENT_ENABLED ? "Học thử / chờ thanh toán" : "Chờ kích hoạt", ACTIVE: "Đang học", PAUSED: "Tạm dừng", EXPIRED: "Hết hạn" } as const;
 const GOAL_LABELS = { achieved: "Đạt", needs_review: "Cần ôn", insufficient_evidence: "Chưa đủ dữ liệu" } as const;
 const SELECTED_BY = { plan: "Theo lộ trình", rule: "Quy tắc ôn tập", openai: "AI điều chỉnh" } as Record<string, string>;
 const NOTIFY_LABELS = { PENDING: "Đang chờ", SENT: "Đã gửi", SKIPPED: "Bỏ qua", FAILED: "Lỗi" } as const;

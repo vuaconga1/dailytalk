@@ -186,30 +186,21 @@ export function HistoryView({ history, weekReviews, streak, studySeconds, curren
   return (
     <section className="animate-fade-in pb-16">
       {/* 1. Page Header */}
-      <div className="mb-8 border-b border-[#e2e8f4] pb-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="eyebrow flex items-center gap-2">
-              <span className="size-2 rounded-full bg-gold animate-pulse-glow" />
-              NHÌN LẠI ĐỂ TIẾN BỘ
-            </div>
-            <h1 className="page-title mt-1">Nhật ký học tập.</h1>
-            <p className="mt-2 text-sm sm:text-base text-slate-600 max-w-2xl">
-              Theo dõi từng buổi học, các lượt phản xạ cùng WeWIN AI Coach và nhận xét chi tiết sau mỗi buổi để thấy sự tiến bộ mỗi ngày.
-            </p>
+      <header className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border-2 border-black bg-gray-100 p-5 text-navy shadow-(--ww-frame-shadow) md:p-7">
+        <div className="min-w-0 flex-1 basis-64">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-600">
+            <span className="size-2 rounded-full bg-gold" />
+            Nhìn lại để tiến bộ
           </div>
-
-          <div className="flex items-center gap-2.5">
-            <Link
-              href="/today"
-              className="inline-flex items-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-xs transition-all hover:-translate-y-0.5 hover:bg-navy-light"
-            >
-              <span>Vào học hôm nay</span>
-              <span>→</span>
-            </Link>
-          </div>
+          <h1 className="mt-2 text-[clamp(26px,3.4vw,38px)] font-extrabold leading-tight tracking-tight">Nhật ký học tập.</h1>
+          <p className="mt-2 max-w-2xl text-sm text-ink-secondary sm:text-base">
+            Theo dõi từng buổi học, các lượt phản xạ cùng WeWIN AI Coach và nhận xét chi tiết sau mỗi buổi để thấy sự tiến bộ mỗi ngày.
+          </p>
         </div>
-      </div>
+        <Link href="/today" className="btn btn-gold w-full sm:w-auto">
+          Vào học hôm nay →
+        </Link>
+      </header>
 
       {history.length > 0 ? (
         <>
@@ -251,33 +242,29 @@ export function HistoryView({ history, weekReviews, streak, studySeconds, curren
                 return (
                   <div key={week} className="relative">
                     {/* Week Header Bar */}
-                    <div className="sticky top-16 z-20 mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/90 bg-white/95 px-5 py-3.5 shadow-xs backdrop-blur-md">
-                      <div className="flex items-center gap-3">
-                        <span className="grid size-8 place-items-center rounded-lg bg-navy text-xs font-black text-amber-300">
+                    <div className="sticky top-16 z-20 mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-black bg-white/95 px-4 py-3 shadow-(--ww-frame-shadow) backdrop-blur-md sm:px-5">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-navy text-xs font-black text-gold-light">
                           W{week}
                         </span>
-                        <div>
-                          <h2 className="text-base sm:text-lg font-black text-navy leading-tight">
+                        <div className="min-w-0">
+                          <h2 className="text-base font-extrabold leading-tight text-navy sm:text-lg">
                             TUẦN {week} · BUỔI {String(range.fromDay).padStart(2, "0")}–
                             {String(range.toDay).padStart(2, "0")}
                           </h2>
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-ink-secondary">
                             Hiển thị {items.length} buổi trong tuần này
                           </span>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2.5">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
-                          <span
-                            className={`size-2 rounded-full ${
-                              completedInWeek === totalInWeek
-                                ? "bg-emerald-500"
-                                : completedInWeek > 0
-                                  ? "bg-amber-500"
-                                  : "bg-slate-300"
-                            }`}
-                          />
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full border-[1.5px] px-3 py-1 text-xs font-bold ${
+                            completedInWeek === totalInWeek ? "border-black bg-navy text-white" : "border-black bg-gold-soft text-navy"
+                          }`}
+                        >
+                          <span className={`size-2 rounded-full ${completedInWeek > 0 ? "bg-gold" : "bg-navy/30"}`} />
                           {completedInWeek}/{totalInWeek} buổi hoàn thành
                         </span>
                       </div>
@@ -298,45 +285,37 @@ export function HistoryView({ history, weekReviews, streak, studySeconds, curren
             </div>
           ) : (
             /* No Filter Matches State */
-            <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center shadow-xs">
-              <span className="grid mx-auto size-14 place-items-center rounded-2xl bg-slate-100 text-2xl text-slate-500 mb-4">
+            <div className="rounded-2xl border-2 border-black bg-white p-8 text-center sm:p-12">
+              <span className="mx-auto mb-4 grid size-14 place-items-center rounded-2xl bg-navy-soft text-2xl" aria-hidden>
                 🔍
               </span>
               <h3 className="text-lg font-bold text-navy">
                 Không tìm thấy buổi học nào phù hợp
               </h3>
-              <p className="mt-1 text-sm text-slate-500 max-w-md mx-auto">
+              <p className="mx-auto mt-1 max-w-md text-sm text-ink-secondary">
                 Không có kết quả nào cho tiêu chí tìm kiếm hoặc bộ lọc hiện tại. Hãy thử chọn tuần khác hoặc xóa bộ lọc.
               </p>
-              <button
-                type="button"
-                onClick={handleResetFilters}
-                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-navy-light transition-all"
-              >
-                <span>Xóa toàn bộ bộ lọc</span>
+              <button type="button" onClick={handleResetFilters} className="btn mt-5">
+                Xóa toàn bộ bộ lọc
               </button>
             </div>
           )}
         </>
       ) : (
         /* Empty State (User has no history at all yet) */
-        <div className="rounded-3xl border border-slate-200 bg-white p-12 md:p-16 text-center shadow-xs">
-          <span className="grid mx-auto size-16 place-items-center rounded-2xl bg-amber-50 text-3xl text-gold mb-4 border border-amber-200/60">
+        <div className="rounded-2xl border-2 border-black bg-white p-8 text-center sm:p-12 md:p-16">
+          <span className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl border-[1.5px] border-black bg-gold-soft text-3xl" aria-hidden>
             📖
           </span>
-          <h2 className="text-xl md:text-2xl font-black text-navy">
+          <h2 className="text-xl font-black text-navy md:text-2xl">
             Chưa có lịch sử học tập.
           </h2>
-          <p className="mt-2 text-sm md:text-base text-slate-600 max-w-lg mx-auto leading-relaxed">
+          <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-ink-secondary md:text-base">
             Nhật ký học tập sẽ tự động ghi lại quá trình luyện nói 15 phút hàng ngày, phân tích giọng nói và nhận xét chi tiết sau mỗi buổi cùng AI Coach.
           </p>
           <div className="mt-6">
-            <Link
-              href="/today"
-              className="inline-flex items-center gap-2 rounded-xl bg-navy px-6 py-3.5 text-sm font-bold text-white shadow-md hover:bg-navy-light hover:shadow-lg transition-all"
-            >
-              <span>Bắt đầu buổi học đầu tiên</span>
-              <span>→</span>
+            <Link href="/today" className="btn">
+              Bắt đầu buổi học đầu tiên →
             </Link>
           </div>
         </div>

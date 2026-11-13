@@ -7,6 +7,8 @@ import { isLightPace } from "@/domain/pace";
 import { MAX_AGE, MIN_AGE, NAME_MAX } from "@/domain/profile";
 import { AUDIENCES, DURATIONS, FREQUENCIES, GENDERS, GOALS, INDUSTRIES, labelOf, LEVELS, OTHER, type Option } from "@/domain/profile-options";
 
+export type OnboardingValues = Form;
+
 type Form = {
   name: string;
   age: string;
@@ -86,9 +88,17 @@ function Choice({ name, options, value, onChange }: { name: string; options: rea
   );
 }
 
-export function OnboardingForm({ restart = false, defaultName = "" }: { restart?: boolean; defaultName?: string }) {
+type Props = {
+  restart?: boolean;
+  /** A trial learner revising a saved profile before paying. */
+  editing?: boolean;
+  defaultName?: string;
+  initial?: Partial<Form>;
+};
+
+export function OnboardingForm({ restart = false, editing = false, defaultName = "", initial }: Props) {
   const router = useRouter();
-  const [form, setForm] = useState<Form>({ ...EMPTY, name: defaultName });
+  const [form, setForm] = useState<Form>({ ...EMPTY, name: defaultName, ...initial });
   const [step, setStep] = useState<"form" | "confirm">("form");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -111,8 +121,8 @@ export function OnboardingForm({ restart = false, defaultName = "" }: { restart?
     setBusy(true);
     setError("");
     try {
-      await api("/api/onboard", form);
-      router.replace("/onboarding/result");
+      const { next } = await api<{ next: string }>("/api/onboard", form);
+      router.replace(next);
       router.refresh();
     } catch (err) {
       setError(errorMessage(err));
@@ -159,7 +169,7 @@ export function OnboardingForm({ restart = false, defaultName = "" }: { restart?
             ← Sửa thông tin
           </button>
           <button type="button" className="btn" disabled={busy} onClick={confirm}>
-            {busy ? "Đang phân tích hồ sơ và tạo lộ trình…" : "Xác nhận và xem lộ trình →"}
+            {busy ? "Đang phân tích hồ sơ và tạo lộ trình…" : editing ? "Lưu hồ sơ và tiếp tục thanh toán →" : "Xác nhận và tiếp tục →"}
           </button>
         </div>
         <div className="form-error" role="alert">
@@ -308,7 +318,7 @@ export function OnboardingForm({ restart = false, defaultName = "" }: { restart?
         Nhắc tôi trước giờ học mỗi ngày.
       </label>
       <label className="check mt-3">
-        <input type="checkbox" required />
+        <input type="checkbox" required defaultChecked={editing} />
         Tôi đồng ý để WeWIN lưu hồ sơ và kết quả học tập nhằm cá nhân hóa lộ trình của tôi.
       </label>
       <button type="submit" className="btn mt-6 w-full sm:w-auto">

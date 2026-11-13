@@ -174,60 +174,61 @@ export function LessonPlayer({ initial, week, serverTime, demo, audio, contextLa
 
   return (
     <section className="animate-fade-in mx-auto w-full max-w-[1000px] pb-12">
-      {/* Top Header Row with Timer */}
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4 border-b border-[#e2e8f4] pb-5 md:items-center">
-        <div>
-          <div className="eyebrow flex items-center gap-2">
+      <header className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border-2 border-black bg-gray-100 p-5 text-navy shadow-(--ww-frame-shadow) md:items-center md:p-7">
+        <div className="min-w-0 flex-1 basis-64">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-600">
             <span className="size-2 rounded-full bg-gold" />
-            BUỔI {attempt.day} · {contextLabel}
+            Buổi {attempt.day} · {contextLabel}
           </div>
-          <h1 className="my-1.5 text-2xl md:text-3xl font-extrabold text-navy tracking-tight">
-            {lesson.title}
-          </h1>
-          <p className="text-sm md:text-base text-slate-600">{lesson.goal}</p>
+          <h1 className="mt-2 mb-1.5 text-2xl font-extrabold tracking-tight md:text-3xl">{lesson.title}</h1>
+          <p className="text-sm text-ink-secondary md:text-base">{lesson.goal}</p>
           {attempt.focus && (
-            <div className="mt-2 inline-flex items-center gap-1.5 text-xs md:text-sm font-semibold text-amber-900 bg-amber-50 px-3 py-1 rounded-lg border border-amber-200/70">
-              <span>✦</span> Trọng tâm buổi học: {attempt.focus}
+            <div className="mt-3 inline-flex items-start gap-1.5 rounded-lg border border-gold/50 bg-gold-soft px-3 py-1.5 text-xs font-semibold text-amber-800 md:text-sm">
+              <span aria-hidden>✦</span>
+              <span className="min-w-0">Trọng tâm: {attempt.focus}</span>
             </div>
           )}
         </div>
 
-        {/* 5-Minute Practice Clock */}
-        <div className="flex items-center gap-3.5 rounded-2xl bg-amber-50/90 border border-amber-200/80 px-4 py-3 text-amber-900 shadow-xs">
-          <div className="text-2xl font-black tabular-nums md:text-3xl">
+        <div className="flex items-center gap-3 rounded-xl border border-gold/50 bg-white px-4 py-3">
+          <div className="text-2xl font-black tabular-nums text-amber-600 md:text-3xl">
             {practice?.ended ? "Đã xong" : mounted ? clock(left) : clock(DAILY_SECONDS)}
           </div>
-          <div className="text-[10px] font-bold uppercase tracking-wider text-amber-800 leading-tight">
+          <div className="text-[10px] font-bold uppercase leading-tight tracking-wider text-muted">
             Phiên nói
-            <br />
-            3 phút
+            <br />3 phút
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Modern Stepper Navigation */}
-      <nav className="my-6 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3" aria-label="Các phần bài học">
-        {STEPS.map((title, i) => (
-          <button
-            key={title}
-            type="button"
-            onClick={() => goTo(i)}
-            className={`flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-xs md:text-sm font-semibold transition-all duration-200 ${
-              step === i
-                ? "bg-navy text-white shadow-sm ring-2 ring-navy/10 scale-[1.02]"
-                : "bg-white border border-[#e2e8f4] text-slate-600 hover:bg-slate-50 hover:text-navy"
-            } ${stepDone[i] ? "border-b-4 border-b-emerald-500" : ""}`}
-          >
-            {stepDone[i] && (
-              <span className="text-emerald-500 font-bold">✓</span>
-            )}
-            <span>{title}</span>
-          </button>
-        ))}
+      <nav className="my-5 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3" aria-label="Các phần bài học">
+        {STEPS.map((title, i) => {
+          const [num, label] = title.split(". ");
+          const active = step === i;
+          return (
+            <button
+              key={title}
+              type="button"
+              onClick={() => goTo(i)}
+              aria-current={active ? "step" : undefined}
+              className={`flex min-h-12 items-center gap-2.5 rounded-xl border-[1.5px] px-3 py-2.5 text-left text-xs font-semibold transition-all duration-200 md:text-sm ${
+                active ? "border-black bg-navy text-white shadow-sm" : "border-black bg-white text-navy hover:bg-navy-soft/50"
+              }`}
+            >
+              <span
+                className={`grid size-7 shrink-0 place-items-center rounded-full text-xs font-bold ${
+                  stepDone[i] ? "bg-gold text-white" : active ? "bg-white/15 text-gold-light" : "bg-navy-soft text-navy"
+                }`}
+              >
+                {stepDone[i] ? "✓" : num}
+              </span>
+              <span className="min-w-0">{label}</span>
+            </button>
+          );
+        })}
       </nav>
 
-      {/* Step Workspace Card */}
-      <div className="rounded-2xl border border-[#e2e8f4] bg-white p-6 md:p-8 shadow-xs">
+      <div className="rounded-2xl border-2 border-black bg-white p-4 shadow-(--ww-frame-shadow) sm:p-6 md:p-8">
         {step === 0 && <WordsStep lesson={lesson} audio={audio} media={media} onNext={() => checkpoint("words")} onError={notify} />}
         {step === 1 && (
           <ShadowStep lesson={lesson} serverAudio={audio.lines} lineUrls={audio.lineUrls} media={media} onNext={() => checkpoint("shadow")} onError={notify} />

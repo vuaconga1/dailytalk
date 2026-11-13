@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { BulkAccounts } from "@/components/admin/bulk-accounts";
-import { can, daysLeft, EXPIRING_SOON_DAYS } from "@/domain/access";
+import { can, daysLeft, EXPIRING_SOON_DAYS, PAYMENT_ENABLED } from "@/domain/access";
 import {
   isLearnerFilter,
   isLearnerSort,
@@ -15,7 +15,7 @@ import { levelInfo } from "@/domain/profile-options";
 import { requireStaff } from "@/server/http/page-guards";
 import { formatVnDate, vnDate } from "@/lib/time";
 
-const STATUS_LABELS = { LEAD: "Chờ kích hoạt", ACTIVE: "Đang học", PAUSED: "Tạm dừng", EXPIRED: "Hết hạn" } as const;
+const STATUS_LABELS = { LEAD: PAYMENT_ENABLED ? "Học thử / chờ thanh toán" : "Chờ kích hoạt", ACTIVE: "Đang học", PAUSED: "Tạm dừng", EXPIRED: "Hết hạn" } as const;
 
 const INPUT = "rounded-lg border border-[#cfdae1] bg-white px-3 py-2 text-sm outline-none focus:border-teal";
 

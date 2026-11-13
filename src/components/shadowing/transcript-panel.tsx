@@ -45,12 +45,12 @@ function Toggle({ label, on, onClick }: { label: string; on: boolean; onClick: (
       type="button"
       onClick={onClick}
       aria-pressed={on}
-      className={`inline-flex min-h-9 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-bold transition ${
-        on ? "border-navy bg-navy text-white" : "border-line bg-white text-muted hover:text-navy"
+      className={`inline-flex min-h-9 items-center gap-1.5 rounded-xl border-[1.5px] px-2.5 text-xs font-bold transition ${
+        on ? "border-black bg-navy text-white" : "border-black bg-white text-navy hover:bg-navy-soft/60"
       }`}
     >
       {label}
-      <span className={`rounded-md px-1.5 py-0.5 text-[10px] ${on ? "bg-emerald-400 text-navy-deep" : "bg-slate-100 text-muted"}`}>{on ? "ON" : "OFF"}</span>
+      <span className={`rounded-md px-1.5 py-0.5 text-[10px] ${on ? "bg-gold text-white" : "bg-navy-soft text-muted"}`}>{on ? "ON" : "OFF"}</span>
     </button>
   );
 }
@@ -70,19 +70,19 @@ export function TranscriptPanel(p: Props) {
   }, [p.index]);
 
   const navButton =
-    "grid size-11 place-items-center rounded-xl border border-line bg-white text-navy transition hover:border-navy/40 disabled:opacity-40";
+    "grid size-11 place-items-center rounded-xl border-[1.5px] border-black bg-white text-navy transition hover:bg-navy-soft/60 disabled:opacity-40";
 
   return (
-    <section className="flex min-w-0 flex-col rounded-2xl border border-line bg-white shadow-[0_4px_20px_-4px_rgba(20,40,90,0.05)]">
-      <div className="border-b border-line p-4">
+    <section className="flex min-w-0 flex-col rounded-2xl border-2 border-black bg-white shadow-(--ww-frame-shadow)">
+      <div className="border-b-2 border-black p-4">
         <div className="flex items-center gap-3">
-          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-navy text-gold-light">
             <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
             </svg>
           </span>
           <div className="min-w-0 flex-1">
-            <b className="block text-sm tracking-wider text-navy uppercase">Transcript</b>
+            <b className="block text-base font-extrabold tracking-wide text-navy uppercase">Transcript</b>
             <small className="text-xs text-muted">
               {p.lines.length} câu · {p.words} từ
             </small>
@@ -90,7 +90,7 @@ export function TranscriptPanel(p: Props) {
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {p.annotations && <Toggle label="IPA" on={p.showIpa} onClick={p.onToggleIpa} />}
-          <div className="inline-flex items-center rounded-xl border border-line bg-white p-0.5" role="group" aria-label="Cỡ chữ">
+          <div className="inline-flex items-center rounded-xl border-[1.5px] border-black bg-white p-0.5" role="group" aria-label="Cỡ chữ">
             <button
               type="button"
               aria-label="Chữ nhỏ hơn"
@@ -123,7 +123,7 @@ export function TranscriptPanel(p: Props) {
             )}
           </span>
           {weak && (
-            <button type="button" onClick={p.onPracticeWeak} disabled={p.locked} className="font-semibold text-teal hover:underline disabled:opacity-40">
+            <button type="button" onClick={p.onPracticeWeak} disabled={p.locked} className="min-h-9 font-bold text-gold hover:underline disabled:opacity-40">
               Luyện câu &lt; 60 điểm →
             </button>
           )}
@@ -131,7 +131,7 @@ export function TranscriptPanel(p: Props) {
         {p.lines.length > 0 && (
           <progress className="mt-2 !h-1.5" value={practiced} max={p.lines.length} aria-label="Tiến độ luyện câu" />
         )}
-        {p.estimated && <p className="mt-2 text-[11px] text-amber-700">Thời điểm từng câu được ước lượng theo độ dài, có thể lệch vài giây.</p>}
+        {p.estimated && <p className="mt-2 text-[11px] text-muted italic">Thời điểm từng câu được ước lượng theo độ dài, có thể lệch vài giây.</p>}
       </div>
 
       <ol ref={listRef} className="relative grid max-h-[calc(100vh-320px)] min-h-[240px] content-start gap-2 overflow-y-auto p-3">
@@ -158,34 +158,34 @@ export function TranscriptPanel(p: Props) {
                     p.onSelect(i);
                   }
                 }}
-                className={`flex gap-3 rounded-xl border p-3 transition ${
-                  active ? "border-navy/30 bg-navy-soft/60 shadow-sm" : "border-transparent hover:border-line hover:bg-slate-50"
+                className={`flex gap-3 rounded-xl border-[1.5px] p-3 transition ${
+                  active ? "border-gold bg-gold-soft/40 shadow-sm ring-2 ring-gold/40" : "border-black bg-white hover:bg-navy-soft/40"
                 } ${p.locked && !active ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
               >
                 <span
                   className={`grid size-7 shrink-0 place-items-center rounded-lg text-[11px] font-bold ${
-                    active ? "bg-navy text-white" : "bg-slate-100 text-muted"
+                    active ? "bg-navy text-gold-light" : "bg-navy-soft text-navy"
                   }`}
                 >
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 <div className={`min-w-0 flex-1 break-words ${TEXT_CLASS[p.fontSize]}`}>
-                  {line.speaker && <b className="mr-1 text-teal">{line.speaker}:</b>}
+                  {line.speaker && <b className="mr-1 text-gold">{line.speaker}:</b>}
                   {active && p.cues[i] ? (
                     <KaraokeText cue={p.cues[i]} time={p.player.time} variant="card" onWordClick={p.locked ? undefined : (s) => (p.player.seek(s), p.player.play())} className="inline" />
                   ) : (
-                    <span className="text-ink-secondary">{line.text}</span>
+                    <span className="text-ink">{line.text}</span>
                   )}
                   {ipa && <p className="mt-1 font-mono text-xs break-words text-muted">{ipa}</p>}
                   {result && (
-                    <div className="mt-2 grid gap-2 rounded-lg border border-line bg-white p-2.5" onClick={(e) => e.stopPropagation()}>
+                    <div className="mt-2 grid gap-2 rounded-lg border-[1.5px] border-black bg-white p-2.5" onClick={(e) => e.stopPropagation()}>
                       <AlignedTranscript words={result.grade.wordResults} compact />
                       {result.url && <audio controls src={result.url} className="h-8 w-full" />}
                     </div>
                   )}
                 </div>
                 {score !== undefined && (
-                  <span className={`h-fit shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold ${TONE_BADGE[scoreTone(score)]}`}>{score}%</span>
+                  <span className={`h-fit shrink-0 rounded-full border-[1.5px] px-2 py-0.5 text-[11px] font-bold ${TONE_BADGE[scoreTone(score)]}`}>{score}%</span>
                 )}
               </div>
             </li>
@@ -193,7 +193,7 @@ export function TranscriptPanel(p: Props) {
         })}
       </ol>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white/95 px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-[0_-8px_24px_-12px_rgba(9,23,52,0.25)] backdrop-blur lg:static lg:rounded-b-2xl lg:bg-white lg:pb-2 lg:shadow-none">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t-2 border-black bg-white/95 px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-[0_-8px_24px_-12px_rgba(9,23,52,0.25)] backdrop-blur lg:static lg:rounded-b-2xl lg:bg-white lg:pb-2 lg:shadow-none">
         <div className="mx-auto flex max-w-[640px] items-center justify-between gap-2">
           <button type="button" onClick={p.onReplay} disabled={p.recording} className="btn btn-secondary min-h-11 !px-3 !py-2 text-xs">
             ↻ Nghe lại

@@ -8,7 +8,7 @@ export type AdminLink = { href: string; label: string; icon: string };
 export function AdminNav({ links }: { links: AdminLink[] }) {
   const pathname = usePathname();
   return (
-    <nav aria-label="Quản trị" className="mt-3 flex gap-1 overflow-auto md:mt-0 md:grid md:gap-[9px]">
+    <nav aria-label="Quản trị" className="flex flex-wrap gap-1 md:grid md:gap-[9px]">
       {links.map((l) => {
         const active = l.href === "/admin" ? pathname === "/admin" : pathname.startsWith(l.href);
         return (

@@ -17,13 +17,13 @@ export function SentenceCard(props: {
   onWordClick?: (seconds: number) => void;
 }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-navy/10 bg-gradient-to-br from-navy-soft/70 to-white p-4 sm:p-5">
+    <div className="min-w-0 rounded-2xl border-[1.5px] border-black border-l-8 border-l-gold bg-gradient-to-br from-navy-soft/70 to-white p-4 sm:p-5">
       <div className="flex min-w-0 gap-3">
-        <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-navy text-[11px] font-bold text-white">
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-navy text-xs font-bold text-gold-light">
           {String(props.index + 1).padStart(2, "0")}
         </span>
-        <div className="min-w-0 flex-1 text-lg break-words sm:text-xl">
-          {props.line.speaker && <b className="mr-1 text-teal">{props.line.speaker}:</b>}
+        <div className="min-w-0 flex-1 text-lg font-semibold break-words sm:text-xl">
+          {props.line.speaker && <b className="mr-1 text-gold">{props.line.speaker}:</b>}
           {props.cue ? (
             <KaraokeText cue={props.cue} time={props.time} variant="hero" onWordClick={props.onWordClick} className="inline font-medium" />
           ) : (
@@ -44,7 +44,7 @@ export function MicButton({ onClick, disabled, label }: { onClick: () => void; d
         onClick={onClick}
         disabled={disabled}
         aria-label={label}
-        className="grid size-20 place-items-center rounded-full bg-navy text-white shadow-[0_10px_30px_-8px_rgba(9,23,52,0.55)] ring-8 ring-navy/5 transition hover:scale-105 hover:bg-navy-light active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
+        className="grid size-20 place-items-center rounded-full bg-navy text-white shadow-[0_10px_30px_-8px_rgba(9,23,52,0.55)] ring-4 ring-gold/60 transition hover:scale-105 hover:bg-navy-light active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
       >
         <svg className="size-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
@@ -105,9 +105,9 @@ export function RecordingMeter(props: {
           ))}
         </div>
       </div>
-      <div className="rounded-xl border border-dashed border-line bg-slate-50 p-3">
-        <div className="mb-1 text-[11px] font-bold tracking-wider text-muted uppercase">Hệ thống đang nghe bạn đọc:</div>
-        <p className="min-h-6 text-sm break-words text-slate-700">{props.liveText || <span className="text-slate-400">…</span>}</p>
+      <div className="rounded-xl border-[1.5px] border-dashed border-black bg-navy-soft/40 p-3">
+        <div className="mb-1 text-[11px] font-bold tracking-wider text-black uppercase">Hệ thống đang nghe bạn đọc:</div>
+        <p className="min-h-6 text-sm break-words text-ink">{props.liveText || <span className="text-slate-400">…</span>}</p>
       </div>
     </div>
   );
@@ -124,19 +124,19 @@ export function SentenceGrade(props: {
   const tone = scoreTone(props.grade.score);
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className={`rounded-full border px-3 py-1 text-lg font-extrabold ${TONE_BADGE[tone]}`}>{props.grade.score}%</span>
-        <b className="text-navy">{TONE_LABEL[tone]}</b>
-        <span className="text-xs text-muted">
+      <div className="flex flex-wrap items-center gap-3 border-b-2 border-black pb-3">
+        <span className={`rounded-full border-[1.5px] px-3.5 py-1 text-xl font-extrabold ${TONE_BADGE[tone]}`}>{props.grade.score}%</span>
+        <b className="text-lg text-navy">{TONE_LABEL[tone]}</b>
+        <span className="text-xs font-medium text-ink-secondary">
           {props.grade.correctCount}/{props.grade.totalWords} từ khớp
         </span>
       </div>
-      <div className="rounded-xl border border-line bg-white p-3">
+      <div className="rounded-xl border-[1.5px] border-black bg-white p-3">
         <AlignedTranscript words={props.grade.wordResults} />
       </div>
       {props.url && (
         <div>
-          <div className="mb-1 text-[11px] font-bold tracking-wider text-muted uppercase">Giọng của bạn</div>
+          <div className="mb-1 text-[11px] font-bold tracking-wider text-black uppercase">Giọng của bạn</div>
           <audio controls src={props.url} className="h-9 w-full" />
         </div>
       )}

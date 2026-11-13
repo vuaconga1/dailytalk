@@ -63,7 +63,7 @@ export function NavProgress() {
     <>
       <div className="fixed inset-x-0 top-0 z-[60] h-[3px]" role="progressbar" aria-label="Đang tải trang">
         <div
-          className="h-full bg-gradient-to-r from-gold to-gold-light shadow-[0_0_10px_rgba(245,158,11,0.7)] transition-[width] duration-300 ease-out"
+          className="h-full bg-gradient-to-r from-gold to-gold-light shadow-[0_0_10px_rgba(212,167,44,0.7)] transition-[width] duration-300 ease-out"
           style={{ width: `${progress}%` }}
         />
       </div>

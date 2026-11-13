@@ -2,11 +2,13 @@ import Link from "next/link";
 import { RoadmapGrid } from "@/components/plan/roadmap-grid";
 import { requirePlan } from "@/server/http/page-guards";
 import { profileLabels } from "@/domain/profile";
+import { isTrial } from "@/domain/access";
 
 export default async function OnboardingResultPage() {
   const user = await requirePlan();
   const { classification } = user.profile;
   const labels = profileLabels(user.profile);
+  const trial = isTrial(user);
 
   return (
     <section>
@@ -53,9 +55,16 @@ export default async function OnboardingResultPage() {
         <RoadmapGrid days={user.plan.days} current={1} />
       </article>
 
-      <Link href="/lesson" className="btn btn-gold">
-        Bắt đầu học ngày 1 →
-      </Link>
+      <div className="flex flex-wrap items-center gap-3">
+        <Link href="/lesson" className="btn btn-gold">
+          {trial ? "Học thử miễn phí ngày 1 →" : "Bắt đầu học ngày 1 →"}
+        </Link>
+        {trial && (
+          <Link href="/payment" className="btn btn-outline">
+            Thanh toán để mở toàn bộ lộ trình
+          </Link>
+        )}
+      </div>
     </section>
   );
 }

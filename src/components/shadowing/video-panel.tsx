@@ -51,23 +51,23 @@ type Props = {
 export function VideoPanel({ player, title, level, duration, cue, locked }: Props) {
   const [captions, setCaptions] = useState(true);
   const iconButton =
-    "grid size-11 place-items-center rounded-xl border border-line bg-white text-navy transition hover:border-navy/40 hover:bg-navy-soft/60 disabled:opacity-40";
+    "grid size-11 place-items-center rounded-xl border-[1.5px] border-black bg-white text-navy transition hover:bg-navy-soft/60 disabled:opacity-40";
 
   return (
-    <section className="flex min-w-0 flex-col rounded-2xl border border-line bg-white p-4 shadow-[0_4px_20px_-4px_rgba(20,40,90,0.05)] sm:p-5">
-      <div className="mb-3 flex min-w-0 items-start gap-3">
-        <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl bg-navy-soft text-navy">
+    <section className="flex min-w-0 flex-col rounded-2xl border-2 border-black bg-white p-4 shadow-(--ww-frame-shadow) sm:p-5">
+      <div className="mb-4 flex min-w-0 flex-wrap items-start gap-3 border-b-2 border-black pb-3">
+        <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl bg-navy text-gold-light">
           <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9A2.25 2.25 0 0013.5 5.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
           </svg>
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-[11px] font-bold tracking-[1.5px] text-muted uppercase">Video mẫu</div>
-          <h1 className="line-clamp-2 text-base font-bold text-navy" title={title}>
+          <div className="text-[11px] font-bold tracking-[1.5px] text-gold uppercase">Video mẫu</div>
+          <h1 className="line-clamp-2 text-lg font-extrabold text-navy" title={title}>
             {title}
           </h1>
         </div>
-        {level && <span className="badge shrink-0 !py-1 text-[11px]">Trình độ {level}</span>}
+        {level && <span className="badge badge-gold shrink-0 !py-1 text-[11px]">Trình độ {level}</span>}
       </div>
 
       <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black">
@@ -124,7 +124,7 @@ export function VideoPanel({ player, title, level, duration, cue, locked }: Prop
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-xl border border-line bg-slate-50 p-1" role="group" aria-label="Tốc độ phát">
+          <div className="inline-flex rounded-xl border-[1.5px] border-black bg-navy-soft/50 p-1" role="group" aria-label="Tốc độ phát">
             {RATES.map((r) => (
               <button
                 key={r}
@@ -132,7 +132,7 @@ export function VideoPanel({ player, title, level, duration, cue, locked }: Prop
                 onClick={() => player.setRate(r)}
                 aria-pressed={player.rate === r}
                 className={`min-h-9 rounded-lg px-2.5 text-xs font-semibold transition ${
-                  player.rate === r ? "bg-white text-navy shadow-sm ring-1 ring-line" : "text-muted hover:text-navy"
+                  player.rate === r ? "bg-navy text-white shadow-sm" : "text-navy hover:bg-white"
                 }`}
               >
                 {r}x
@@ -141,7 +141,7 @@ export function VideoPanel({ player, title, level, duration, cue, locked }: Prop
           </div>
           <button
             type="button"
-            className={`${iconButton} ${captions ? "!border-navy/40 !bg-navy-soft" : ""}`}
+            className={`${iconButton} ${captions ? "!bg-gold-soft" : ""}`}
             onClick={() => setCaptions((c) => !c)}
             aria-pressed={captions}
             aria-label="Bật/tắt phụ đề"
@@ -154,7 +154,7 @@ export function VideoPanel({ player, title, level, duration, cue, locked }: Prop
               {player.muted || player.volume === 0 ? "🔇" : "🔊"}
             </button>
             <div className="absolute right-0 bottom-full z-30 hidden pb-2 group-focus-within:block group-hover:block">
-              <div className="rounded-xl border border-line bg-white px-3 py-2 shadow-lg">
+              <div className="rounded-xl border-[1.5px] border-black bg-white px-3 py-2 shadow-lg">
                 <input
                   type="range"
                   aria-label="Âm lượng"

@@ -40,7 +40,7 @@ export default async function AdminHome() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <article className="card">
+        <article className="card min-w-0 overflow-x-auto">
           <h3 className="mb-3 text-lg font-bold">Học viên cần hỗ trợ ngay</h3>
           {counts.support.length ? (
             <table className="data-table">
@@ -63,7 +63,7 @@ export default async function AdminHome() {
           )}
         </article>
 
-        <article className="card">
+        <article className="card min-w-0 overflow-x-auto">
           <h3 className="mb-1 text-lg font-bold">Tổng kết tuần</h3>
           <p className="mb-3 text-xs text-muted">
             {formatVnDate(weekStart)} – {formatVnDate(shiftDays(weekStart, 6))}

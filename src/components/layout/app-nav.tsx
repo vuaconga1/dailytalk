@@ -65,9 +65,9 @@ function isActive(pathname: string, href: string) {
   );
 }
 
-type NavProps = { hasPlan: boolean; showShadowing: boolean; className?: string };
+type NavProps = { hasPlan: boolean; showShadowing: boolean; className?: string; tabs?: boolean };
 
-export function AppNav({ hasPlan, showShadowing, className = "" }: NavProps) {
+export function AppNav({ hasPlan, showShadowing, className = "", tabs = false }: NavProps) {
   const pathname = usePathname();
   if (!hasPlan) return null;
 
@@ -80,20 +80,24 @@ export function AppNav({ hasPlan, showShadowing, className = "" }: NavProps) {
             key={l.href}
             href={l.href}
             aria-current={active ? "page" : undefined}
-            className={`group flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-medium whitespace-nowrap transition-all duration-200 active:scale-95 ${
+            className={`group flex items-center rounded-lg border font-medium whitespace-nowrap transition-all duration-200 active:scale-95 ${
+              tabs
+                ? "min-w-0 flex-1 flex-col gap-0.5 px-1 py-1 text-[11px] sm:flex-none sm:flex-row sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[13px]"
+                : "gap-1.5 px-3 py-1.5 text-[13px]"
+            } ${
               active
-                ? "border-amber-400/60 bg-amber-400/10 font-semibold text-white shadow-[0_0_0_3px_rgba(245,158,11,0.12)]"
-                : "border-transparent text-slate-300 hover:-translate-y-px hover:border-white/25 hover:bg-white/10 hover:text-white"
+                ? "border-amber-400/60 bg-amber-400/10 font-semibold text-white shadow-[0_0_0_3px_rgba(212,167,44,0.15)]"
+                : "border-transparent text-white hover:-translate-y-px hover:border-white/25 hover:bg-white/10 hover:text-white"
             }`}
           >
             <span
               className={`transition-colors ${
-                active ? "text-amber-400" : "text-slate-400 group-hover:text-slate-200"
+                active ? "text-amber-400" : "text-amber-400 group-hover:text-amber-300"
               }`}
             >
               {l.icon}
             </span>
-            <span>{l.label}</span>
+            <span className={tabs ? "max-w-full truncate" : undefined}>{l.label}</span>
           </Link>
         );
       })}
@@ -103,7 +107,7 @@ export function AppNav({ hasPlan, showShadowing, className = "" }: NavProps) {
 
 export function Crumb() {
   const pathname = usePathname();
-  if (pathname.startsWith("/onboarding")) return null;
+  if (pathname.startsWith("/onboarding") || pathname.startsWith("/payment")) return null;
   const label = pathname.startsWith("/lesson")
     ? "Buổi học hôm nay"
     : (LINKS.find((l) => isActive(pathname, l.href))?.crumb ?? "Khảo sát");
