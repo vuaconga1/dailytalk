@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { StartLessonButton } from "@/components/lesson/start-lesson-button";
 import { CourseReportPanel } from "@/components/today/course-report";
-import { isTrial, PAYMENT_ENABLED } from "@/domain/access";
+import { isTrial, PAYMENT_ENABLED, TRIAL_STUDY_DAYS } from "@/domain/access";
 import { courseLength, isCourseFinished } from "@/domain/course-report";
 import { getCourseReport } from "@/server/learning/course-report";
-import { getHistory } from "@/server/learning/history";
+import { getTodayStatsHistory } from "@/server/learning/history";
 import { getTodayAttempt } from "@/server/learning/lessons";
 import { requirePlan } from "@/server/http/page-guards";
 import { profileLabels } from "@/domain/profile";
@@ -28,7 +28,7 @@ function callName(name: string) {
 
 export default async function TodayPage() {
   const user = await requirePlan();
-  const [attempt, history] = await Promise.all([getTodayAttempt(user), getHistory(user.id)]);
+  const [attempt, history] = await Promise.all([getTodayAttempt(user), getTodayStatsHistory(user.id)]);
   const done = completedCount(history);
   const week = lastWeek(history);
   const report = isCourseFinished(history, courseLength(user.plan)) ? await getCourseReport(user) : null;
@@ -47,7 +47,7 @@ export default async function TodayPage() {
 
       {trial && !attempt.locked && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-black bg-gold-soft px-5 py-3.5 text-sm font-medium text-navy">
-          <span className="min-w-0">Bạn đang học thử miễn phí buổi 1. Thanh toán để mở toàn bộ lộ trình 30 ngày và phòng luyện shadowing.</span>
+          <span className="min-w-0">Bạn đang học thử miễn phí {TRIAL_STUDY_DAYS} buổi. Thanh toán để mở toàn bộ lộ trình 30 ngày và phòng luyện shadowing.</span>
           <Link href="/payment" className="btn !py-2 text-sm">
             Chọn gói học →
           </Link>
@@ -87,7 +87,7 @@ export default async function TodayPage() {
 
             {attempt.locked && trial && (
               <div className="mt-6 rounded-xl bg-white p-4 text-sm text-ink">
-                Bạn đã hoàn thành buổi học thử miễn phí.{" "}
+                Bạn đã hoàn thành {TRIAL_STUDY_DAYS} buổi học thử miễn phí.{" "}
                 <Link href="/payment" className="font-bold text-navy underline">
                   Thanh toán gói học
                 </Link>{" "}

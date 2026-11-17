@@ -28,6 +28,8 @@ export type SessionUser = {
   accessEndsAt: Date | null;
   lockAt: Date | null;
   isDemo: boolean;
+  /** Channels unlocked by the latest paid plan: "email" and/or "zalo". */
+  reminderChannels: string[];
   profile: LearnerProfile | null;
   plan: StudyPlan | null;
   planSource: string | null;
@@ -179,6 +181,7 @@ export const SESSION_USER_SELECT = {
   accessEndsAt: true,
   lockAt: true,
   isDemo: true,
+  reminderChannels: true,
   profile: true,
   plan: true,
   planSource: true,

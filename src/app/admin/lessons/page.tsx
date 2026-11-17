@@ -1,4 +1,5 @@
 import { ApiForm } from "@/components/admin/api-form";
+import { LessonBankDetails } from "@/components/admin/lesson-bank-details";
 import { canGenerateSpeech } from "@/server/ai/config";
 import { normalizeLesson } from "@/domain/content";
 import { lessonClips } from "@/server/learning/audio";
@@ -10,11 +11,33 @@ import { formatVnDate, vnDate } from "@/lib/time";
 
 export default async function LessonsPage() {
   await requireStaff("manageLessons");
-  const rows = await prisma.lessonContent.findMany({ orderBy: [{ uses: "desc" }, { lastUsed: "desc" }], take: 200 });
-  const lessons = rows.map((r) => ({ row: r, lesson: normalizeLesson(r.lesson) }));
-  const keys = lessons.map(({ lesson }) => lessonClips(lesson).map((c) => c.key));
-  const stored = await prisma.audioClip.findMany({ where: { key: { in: keys.flat() } }, select: { key: true, r2Key: true } });
-  const byKey = new Map(stored.map((c) => [c.key, c]));
+  // Metadata columns for the table + lesson only to compute audio keys (lesson is not passed into RSC props).
+  const rows = await prisma.lessonContent.findMany({
+    orderBy: [{ uses: "desc" }, { lastUsed: "desc" }],
+    take: 200,
+    select: {
+      key: true,
+      title: true,
+      industry: true,
+      position: true,
+      level: true,
+      uses: true,
+      lastUsed: true,
+      lesson: true,
+    },
+  });
+
+  const audio = rows.map((row) => {
+    const clips = lessonClips(normalizeLesson(row.lesson));
+    return { key: row.key, total: clips.length, clipKeys: clips.map((c) => c.key) };
+  });
+  const stored = await prisma.audioClip.findMany({
+    where: { key: { in: audio.flatMap((a) => a.clipKeys) } },
+    select: { key: true },
+  });
+  const have = new Set(stored.map((c) => c.key));
+  const readyByKey = new Map(audio.map((a) => [a.key, a.clipKeys.filter((k) => have.has(k)).length] as const));
+  const totalByKey = new Map(audio.map((a) => [a.key, a.total] as const));
 
   return (
     <section>
@@ -38,37 +61,14 @@ export default async function LessonsPage() {
             </tr>
           </thead>
           <tbody>
-            {lessons.map(({ row, lesson }, i) => {
-              const clips = keys[i].map((k) => byKey.get(k));
-              const ready = clips.filter(Boolean).length;
+            {rows.map((row) => {
+              const ready = readyByKey.get(row.key) ?? 0;
+              const total = totalByKey.get(row.key) ?? 0;
               return (
                 <tr key={row.key}>
                   <td>
-                    <b>{lesson.title}</b>
-                    <small className="block text-muted">{lesson.situation}</small>
-                    <details className="mt-1 text-xs">
-                      <summary className="cursor-pointer text-teal">Xem nội dung</summary>
-                      <p className="mt-2">
-                        <b>Từ vựng:</b>{" "}
-                        {lesson.vocabulary
-                          .map((v) => `${v.word}${v.ipa ? ` /${v.ipa}/` : ""}${v.pos ? ` ${v.pos}.` : ""} (${v.meaning})`)
-                          .join(", ")}
-                      </p>
-                      <p>
-                        <b>Mẫu câu:</b>{" "}
-                        {lesson.frames
-                          .map((f, j) => `${f}${lesson.frameNotes?.[j] ? ` (${lesson.frameNotes[j].meaning})` : ""}`)
-                          .join(" · ")}
-                      </p>
-                      <ol className="list-decimal pl-5">
-                        {lesson.dialogue.map((d, j) => (
-                          <li key={j}>{d}</li>
-                        ))}
-                      </ol>
-                      <p>
-                        <b>Role-play:</b> {lesson.roleplay.role} – {lesson.roleplay.goal}
-                      </p>
-                    </details>
+                    <b>{row.title}</b>
+                    <LessonBankDetails lessonKey={row.key} />
                   </td>
                   <td className="text-muted">
                     {row.industry}
@@ -80,12 +80,12 @@ export default async function LessonsPage() {
                     <small className="block text-muted">{formatVnDate(vnDate(row.lastUsed))}</small>
                   </td>
                   <td>
-                    <span className={`badge ${ready === clips.length ? "" : "badge-gold"}`}>
-                      {ready}/{clips.length}
+                    <span className={`badge ${ready === total ? "" : "badge-gold"}`}>
+                      {ready}/{total}
                     </span>
                   </td>
                   <td>
-                    {canGenerateSpeech && ready < clips.length && (
+                    {canGenerateSpeech && ready < total && (
                       <ApiForm
                         endpoint="/api/admin/audio"
                         extra={{ key: row.key }}
@@ -98,7 +98,7 @@ export default async function LessonsPage() {
                 </tr>
               );
             })}
-            {!lessons.length && (
+            {!rows.length && (
               <tr>
                 <td colSpan={6} className="py-8 text-center text-muted">
                   Ngân hàng chưa có bài nào.

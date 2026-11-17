@@ -2,14 +2,14 @@ import { CheckoutSteps } from "@/components/onboarding/checkout-steps";
 import { PaymentPanel } from "@/components/payment/payment-panel";
 import { notFound } from "next/navigation";
 import { isTrial, PAYMENT_ENABLED } from "@/domain/access";
-import { planOf } from "@/domain/payment";
+import type { PlanId } from "@/domain/payment";
 import { requirePlan } from "@/server/http/page-guards";
 
 export default async function PaymentPage() {
   if (!PAYMENT_ENABLED) notFound();
   const user = await requirePlan();
   const trial = isTrial(user);
-  const defaultMonths = planOf(user.profile.duration_months)?.months ?? 1;
+  const defaultPlanId: PlanId = "full";
 
   return (
     <section className="mx-auto w-full min-w-0 max-w-[1040px]">
@@ -23,7 +23,7 @@ export default async function PaymentPage() {
         </p>
       </div>
       {trial && <CheckoutSteps current={1} formDone />}
-      <PaymentPanel defaultMonths={defaultMonths} trial={trial} />
+      <PaymentPanel defaultPlanId={defaultPlanId} trial={trial} />
     </section>
   );
 }

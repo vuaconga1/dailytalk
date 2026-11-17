@@ -20,7 +20,7 @@ enum Role {
 }
 
 enum AccountStatus {
-  /// Đã đăng ký; được khảo sát và học thử 1 buổi, chờ thanh toán (hoặc chuyên viên kích hoạt)
+  /// Đã đăng ký; được khảo sát và học thử, chờ thanh toán (hoặc chuyên viên kích hoạt)
   LEAD
   ACTIVE
   PAUSED
@@ -43,6 +43,8 @@ model User {
   plan          Json?
   planSource    String?
   packageName   String?
+  /// Channels unlocked by the latest paid plan: "email" and/or "zalo". Empty while LEAD/trial.
+  reminderChannels String[] @default([])
   activatedAt   DateTime?
   accessEndsAt  DateTime?
   /// Hoàn thành ngày 30 + 24 giờ; từ thời điểm này tài khoản bị khóa cho đến khi được kích hoạt lại.
@@ -74,6 +76,8 @@ model User {
 
   @@index([role, status])
   @@index([consultantId])
+  @@index([accessEndsAt])
+  @@index([lockAt])
 }
 
 /// One study day. `lesson` is a snapshot, so content edits never change past sessions.
@@ -108,6 +112,7 @@ model Attempt {
 
   @@unique([userId, day])
   @@index([userId, completed])
+  @@index([userId, completed, localDate])
 }
 
 /// The 5-minute conversation of an attempt.
@@ -286,7 +291,10 @@ model Payment {
   code      String         @unique
   userId    String
   user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  months    Int
+  /// "email" | "full" — see src/domain/payment.ts
+  planId    String
+  /// Access days granted when this order is paid
+  days      Int
   /// VND
   amount    Int
   status    PaymentStatus  @default(PENDING)
@@ -295,6 +303,7 @@ model Payment {
   transfers BankTransfer[]
 
   @@index([userId, status])
+  @@index([userId, planId, status])
 }
 
 /// Incoming transfer reported by the bank webhook (SePay); `id` makes each report idempotent.
@@ -330,6 +339,8 @@ model ShadowingExercise {
   durationSec      Int?
   /// Model text; sentences are split by src/domain/shadowing/transcript.ts. Editable by staff.
   transcript       String
+  /// Cached transcriptLines(transcript).length for lean admin lists; null until written/backfilled.
+  lineCount        Int?
   /// Timed words of the YouTube caption track: [{ w, s, e, sp? }] in seconds.
   captionWords     Json?
   /// e.g. "youtube:en:asr", "youtube:en", "file"

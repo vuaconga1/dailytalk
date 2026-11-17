@@ -7,11 +7,11 @@ function requireEnabled() {
   if (!PAYMENT_ENABLED) throw new Problem("Not found", 404);
 }
 
-/** Opens (or reuses) the QR transfer order for a plan: `{ months }`. */
+/** Opens (or reuses) the QR transfer order for a plan: `{ planId }`. */
 export const POST = authedRoute(async (req, user) => {
   requireEnabled();
   const body = await readJson(req);
-  return json(toPaymentView(await openPayment(user.id, body.months)));
+  return json(toPaymentView(await openPayment(user.id, body.planId)));
 });
 
 /** Polled by the payment page until the bank webhook marks the order paid. */

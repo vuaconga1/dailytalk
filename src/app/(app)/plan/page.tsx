@@ -1,6 +1,6 @@
 import { RoadmapGrid } from "@/components/plan/roadmap-grid";
 import { SectionHeading } from "@/components/section-heading";
-import { getHistory } from "@/server/learning/history";
+import { getPlanHistory } from "@/server/learning/history";
 import { getTodayAttempt } from "@/server/learning/lessons";
 import { openAllDaysFor } from "@/server/learning/practice";
 import { requirePlan } from "@/server/http/page-guards";
@@ -8,7 +8,7 @@ import { levelInfo } from "@/domain/profile-options";
 
 export default async function PlanPage() {
   const user = await requirePlan();
-  const [attempt, history] = await Promise.all([getTodayAttempt(user), getHistory(user.id)]);
+  const [attempt, history] = await Promise.all([getTodayAttempt(user), getPlanHistory(user.id)]);
   const completed = new Set(history.filter((h) => h.completed).map((h) => h.day));
   const actual = new Map(history.map((h) => [h.day, h.title]));
   const { classification } = user.profile;

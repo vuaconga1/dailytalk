@@ -1,6 +1,6 @@
 import "server-only";
 import type { Practice, Prisma } from "@/generated/prisma/client";
-import { canStudyDay, isTrial } from "@/domain/access";
+import { canStudyDay, isTrial, TRIAL_STUDY_DAYS } from "@/domain/access";
 import type { PracticeView, Turn } from "@/domain/types";
 import { Problem } from "@/lib/errors";
 import type { SessionUser } from "@/server/auth";
@@ -42,7 +42,7 @@ export async function ownedAttempt(user: SessionUser, attemptId: unknown, requir
   if (requireAccess && !openAllDaysFor(user) && !canStudyDay(user, attempt.day)) {
     throw new Problem(
       isTrial(user)
-        ? "Buổi học thử đã kết thúc. Hãy thanh toán gói học để mở toàn bộ lộ trình."
+        ? `Bạn đã hết ${TRIAL_STUDY_DAYS} buổi học thử. Hãy thanh toán gói học để mở toàn bộ lộ trình.`
         : "Tài khoản chưa được kích hoạt hoặc đã hết hạn. Vui lòng liên hệ chuyên viên WeWIN.",
       403,
     );

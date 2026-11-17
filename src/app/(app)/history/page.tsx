@@ -1,5 +1,5 @@
 import { HistoryView } from "@/components/history/history-view";
-import { getHistory, getWeekReviews } from "@/server/learning/history";
+import { getHistoryPageData } from "@/server/learning/history";
 import { getMonthlyStudySeconds } from "@/server/learning/study-time";
 import { requirePlan } from "@/server/http/page-guards";
 import { streak } from "@/domain/stats";
@@ -7,9 +7,8 @@ import { vnDate } from "@/lib/time";
 
 export default async function HistoryPage() {
   const user = await requirePlan();
-  const [history, weekReviews, studySeconds] = await Promise.all([
-    getHistory(user.id),
-    getWeekReviews(user.id),
+  const [{ history, weekReviews }, studySeconds] = await Promise.all([
+    getHistoryPageData(user.id),
     getMonthlyStudySeconds(user.id),
   ]);
   const currentStreak = streak(history);

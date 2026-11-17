@@ -2,7 +2,7 @@ import Link from "next/link";
 import { RoadmapGrid } from "@/components/plan/roadmap-grid";
 import { requirePlan } from "@/server/http/page-guards";
 import { profileLabels } from "@/domain/profile";
-import { isTrial } from "@/domain/access";
+import { isTrial, TRIAL_STUDY_DAYS } from "@/domain/access";
 
 export default async function OnboardingResultPage() {
   const user = await requirePlan();
@@ -57,7 +57,7 @@ export default async function OnboardingResultPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         <Link href="/lesson" className="btn btn-gold">
-          {trial ? "Học thử miễn phí ngày 1 →" : "Bắt đầu học ngày 1 →"}
+          {trial ? `Học thử miễn phí ${TRIAL_STUDY_DAYS} buổi →` : "Bắt đầu học ngày 1 →"}
         </Link>
         {trial && (
           <Link href="/payment" className="btn btn-outline">

@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, errorMessage } from "@/client/api";
-import { formatVnd, PLANS, PRICE_PER_MONTH, type PaymentView } from "@/domain/payment";
+import { formatVnd, PLANS, type PlanId, type PaymentView } from "@/domain/payment";
+import { TRIAL_STUDY_DAYS } from "@/domain/access";
 
-const POLL_MS = 4000;
+const POLL_MS = 10_000;
 
 function CopyRow({ label, value, display }: { label: string; value: string; display?: string }) {
   const [copied, setCopied] = useState(false);
@@ -31,9 +32,18 @@ function CopyRow({ label, value, display }: { label: string; value: string; disp
   );
 }
 
-export function PaymentPanel({ defaultMonths, trial }: { defaultMonths: number; trial: boolean }) {
+function channelLabel(channels: string[]): string {
+  const hasZalo = channels.includes("zalo");
+  const hasEmail = channels.includes("email");
+  if (hasEmail && hasZalo) return "Nhắc học qua email và Zalo";
+  if (hasEmail) return "Nhắc học qua email";
+  if (hasZalo) return "Nhắc học qua Zalo";
+  return "Không nhắc học tự động";
+}
+
+export function PaymentPanel({ defaultPlanId, trial }: { defaultPlanId: PlanId; trial: boolean }) {
   const router = useRouter();
-  const [months, setMonths] = useState(defaultMonths);
+  const [planId, setPlanId] = useState<PlanId>(defaultPlanId);
   const [payment, setPayment] = useState<PaymentView | null>(null);
   const [error, setError] = useState("");
 
@@ -41,13 +51,13 @@ export function PaymentPanel({ defaultMonths, trial }: { defaultMonths: number; 
     let cancelled = false;
     setPayment(null);
     setError("");
-    api<PaymentView>("/api/payment", { months })
+    api<PaymentView>("/api/payment", { planId })
       .then((p) => !cancelled && setPayment(p))
       .catch((err: unknown) => !cancelled && setError(errorMessage(err)));
     return () => {
       cancelled = true;
     };
-  }, [months]);
+  }, [planId]);
 
   const code = payment?.code;
   const paid = payment?.status === "PAID";
@@ -76,7 +86,8 @@ export function PaymentPanel({ defaultMonths, trial }: { defaultMonths: number; 
         <div className="mx-auto mb-4 grid size-14 place-items-center rounded-full bg-teal-soft text-2xl text-teal">✓</div>
         <h2 className="mb-2 text-2xl font-bold text-navy">Thanh toán thành công!</h2>
         <p className="text-muted">
-          WeWIN đã nhận {formatVnd(payment.amount)} và kích hoạt gói {payment.months} tháng cho bạn. Đang chuyển đến buổi học…
+          WeWIN đã nhận {formatVnd(payment.amount)} và kích hoạt {payment.days} ngày học ({channelLabel(payment.channels).toLowerCase()}).
+          Đang chuyển đến buổi học…
         </p>
         <Link href="/today" className="btn mt-6">
           Vào học ngay →
@@ -89,28 +100,33 @@ export function PaymentPanel({ defaultMonths, trial }: { defaultMonths: number; 
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       <div className="card">
         <h2 className="mb-1 text-xl font-bold text-navy">1. Chọn gói học</h2>
-        <p className="mb-4 text-sm text-muted">{formatVnd(PRICE_PER_MONTH)} / tháng, mở toàn bộ lộ trình và phòng luyện shadowing.</p>
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+        <p className="mb-4 text-sm text-muted">Mỗi gói mở lộ trình 30 ngày. Khác biệt ở kênh nhắc học.</p>
+        <div className="grid gap-2.5">
           {PLANS.map((p) => (
             <button
-              key={p.months}
+              key={p.id}
               type="button"
-              aria-pressed={months === p.months}
-              onClick={() => setMonths(p.months)}
-              className={`rounded-xl border p-3 text-left transition ${
-                months === p.months ? "border-teal bg-teal-soft" : "border-[#cfdae1] bg-white hover:border-teal"
+              aria-pressed={planId === p.id}
+              onClick={() => setPlanId(p.id)}
+              className={`rounded-xl border p-4 text-left transition ${
+                planId === p.id ? "border-teal bg-teal-soft" : "border-[#cfdae1] bg-white hover:border-teal"
               }`}
             >
-              <b className="block text-navy">{p.label}</b>
-              <small className="text-muted">{formatVnd(p.amount)}</small>
+              <span className="flex flex-wrap items-baseline justify-between gap-2">
+                <b className="text-navy">{p.label}</b>
+                <span className="text-sm font-semibold text-teal">{formatVnd(p.amount)}</span>
+              </span>
+              <small className="mt-1 block text-muted">{p.description}</small>
             </button>
           ))}
         </div>
         {trial && (
           <div className="mt-6 border-t border-slate-100 pt-5">
-            <p className="mb-3 text-sm text-muted">Chưa sẵn sàng? Bạn được học thử miễn phí buổi 1 trước khi thanh toán.</p>
+            <p className="mb-3 text-sm text-muted">
+              Chưa sẵn sàng? Bạn được học thử miễn phí {TRIAL_STUDY_DAYS} buổi trước khi thanh toán.
+            </p>
             <Link href="/onboarding/result" className="btn btn-outline">
-              Học thử miễn phí buổi 1 →
+              Học thử miễn phí {TRIAL_STUDY_DAYS} buổi →
             </Link>
           </div>
         )}
@@ -119,7 +135,8 @@ export function PaymentPanel({ defaultMonths, trial }: { defaultMonths: number; 
       <div className="card">
         <h2 className="mb-1 text-xl font-bold text-navy">2. Quét mã QR để thanh toán</h2>
         <p className="mb-4 text-sm text-muted">
-          Mở ứng dụng ngân hàng, quét mã: số tiền và nội dung chuyển khoản được điền sẵn. Vui lòng giữ nguyên nội dung để hệ thống tự kích hoạt.
+          Mở ứng dụng ngân hàng, quét mã: số tiền và nội dung chuyển khoản được điền sẵn. Vui lòng giữ nguyên nội dung để hệ
+          thống tự kích hoạt.
         </p>
         {error && (
           <div className="form-error" role="alert">
@@ -145,6 +162,15 @@ export function PaymentPanel({ defaultMonths, trial }: { defaultMonths: number; 
               <CopyRow label="Số tiền" value={String(payment.amount)} display={formatVnd(payment.amount)} />
               <CopyRow label="Nội dung" value={payment.code} />
             </div>
+            <p className="mb-3 text-sm text-muted">
+              Nội dung gợi ý khi chuyển tay: <b className="text-navy">HỌC PHÍ _ TÊN HỌC VIÊN</b> — nếu quét QR, hãy giữ nguyên mã{" "}
+              <b className="text-navy">{payment.code}</b> để hệ thống tự nhận.
+            </p>
+            <p className="mb-4 text-sm text-muted">
+              Xin cảm ơn Quý PH đã tin tưởng và đồng hành cùng WeWIN.
+              <br />
+              <b className="text-navy">WEWIN Education</b>
+            </p>
             <p className="flex items-center gap-2 text-sm font-semibold text-amber-800">
               <span className="size-2 rounded-full bg-amber-500 animate-pulse" />
               Đang chờ thanh toán… Trang sẽ tự chuyển khi nhận được tiền.

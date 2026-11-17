@@ -7,6 +7,8 @@ export type NotifyOutcome = "sent" | "skipped" | "failed" | "duplicate";
 /**
  * Queues one message per (user, kind, localDate) and delivers it right away.
  * Re-running a job never sends the same reminder twice.
+ * Zalo is only sent when the learner's paid plan includes the "zalo" channel.
+ * Email channel rights are stored but not delivered yet.
  */
 export async function notify(userId: string, kind: string, localDate: string, text: string): Promise<NotifyOutcome> {
   const { count } = await prisma.notification.createMany({
@@ -25,11 +27,18 @@ async function finish(userId: string, kind: string, localDate: string, data: obj
 }
 
 async function deliver(userId: string, kind: string, localDate: string, text: string): Promise<NotifyOutcome> {
-  const link = await prisma.zaloLink.findUnique({ where: { userId } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { reminderChannels: true } });
   const skip = async (reason: string) => {
     await finish(userId, kind, localDate, { status: "SKIPPED", reason });
     return "skipped" as const;
   };
+  // Empty channels = legacy / admin-activated accounts keep prior Zalo behavior.
+  // Paid "email" plan stores ["email"] and must not send Zalo.
+  const channels = user?.reminderChannels ?? [];
+  if (channels.length > 0 && !channels.includes("zalo")) {
+    return skip(channels.includes("email") ? "Gói chỉ nhắc email (chưa gửi email)" : "Gói chưa mở nhắc Zalo");
+  }
+  const link = await prisma.zaloLink.findUnique({ where: { userId } });
   if (!link) return skip("Học viên chưa liên kết Zalo OA");
   if (!link.followed) return skip("Học viên đã bỏ quan tâm OA");
   const windowStart = Date.now() - messagingWindowHours() * 3_600_000;

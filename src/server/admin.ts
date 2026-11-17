@@ -44,7 +44,7 @@ const LIST_SELECT = {
     where: { completed: true },
     orderBy: { day: "desc" },
     take: 3,
-    select: { day: true, localDate: true, summary: true, lesson: true },
+    select: { day: true, localDate: true, summary: true },
   },
   _count: { select: { attempts: { where: { completed: true } } } },
 } satisfies Prisma.UserSelect;

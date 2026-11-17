@@ -478,6 +478,7 @@ async function main() {
           transcript: item.transcript,
           cues: item.cues,
           annotations: item.annotations,
+          lineCount: item.linesCount,
           status: "DRAFT" as const,
           maxRecordSeconds: item.maxRecordSeconds,
         },
@@ -499,6 +500,7 @@ async function main() {
           status: "DRAFT" as const,
           cues: item.cues,
           annotations: item.annotations,
+          lineCount: item.linesCount,
         },
       });
       console.log(`Created in DB: ${item.youtubeId} -> ${created.slug}`);

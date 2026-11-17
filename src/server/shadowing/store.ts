@@ -60,15 +60,35 @@ export function captionWordsOf(raw: unknown): CaptionWord[] {
 
 /** Timing and IPA derived from the transcript; recomputed whenever transcript or captions change. */
 export function deriveContent(transcript: string, captionWords: CaptionWord[], youtubeId: string) {
+  const lines = transcriptLines(transcript);
   const cues = buildCues(transcript, captionWords, youtubeId);
   const annotations: StoredAnnotations = {
     version: 1,
-    lines: transcriptLines(transcript).map((l) => ({ text: l.text, ipa: sentenceIpa(l.text) || null })),
+    lines: lines.map((l) => ({ text: l.text, ipa: sentenceIpa(l.text) || null })),
   };
   return {
+    lineCount: lines.length,
     cues: cues ? (cues as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
     annotations: annotations as unknown as Prisma.InputJsonValue,
   };
+}
+
+/** One-shot fill for rows created before `lineCount` existed (admin list lean path). */
+export async function backfillMissingLineCounts(): Promise<void> {
+  const missing = await prisma.shadowingExercise.findMany({
+    where: { lineCount: null },
+    select: { id: true, transcript: true },
+    take: 500,
+  });
+  if (!missing.length) return;
+  await Promise.all(
+    missing.map((r) =>
+      prisma.shadowingExercise.update({
+        where: { id: r.id },
+        data: { lineCount: transcriptLines(r.transcript).length },
+      }),
+    ),
+  );
 }
 
 export async function listCatalog(): Promise<ShadowingCatalogItem[]> {

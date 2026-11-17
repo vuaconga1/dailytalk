@@ -7,9 +7,8 @@ import { NavProgress } from "@/components/layout/nav-progress";
 import { SessionWatch } from "@/components/layout/session-watch";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { formatVnDateTime } from "@/lib/time";
-import { getHistory } from "@/server/learning/history";
+import { getStreakDays } from "@/server/learning/history";
 import { requireUser } from "@/server/http/page-guards";
-import { streak } from "@/domain/stats";
 
 function initials(name: string) {
   return name
@@ -24,7 +23,7 @@ function initials(name: string) {
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   if (isStaff(user.role)) redirect("/admin");
-  const days = user.plan ? streak(await getHistory(user.id)) : null;
+  const days = user.plan ? await getStreakDays(user.id) : null;
 
   const hasPlan = Boolean(user.plan);
   const showShadowing = hasActiveAccess(user);

@@ -19,7 +19,7 @@ export const EXPIRING_SOON_DAYS = 7;
 export const MIN_PASSWORD = 8;
 export const ADMIN_MIN_PASSWORD = 3;
 /** Study days open to a LEAD (not yet paid) learner. */
-export const TRIAL_STUDY_DAYS = 1;
+export const TRIAL_STUDY_DAYS = 7;
 /**
  * QR payment flow (trial → /payment → auto-activation). Off unless PAYMENT_ENABLED=true:
  * then a LEAD learner is activated for DEFAULT_PACKAGE_DAYS as soon as onboarding builds their plan.

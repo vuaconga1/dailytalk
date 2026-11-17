@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { ApiForm } from "@/components/admin/api-form";
-import { transcriptLines } from "@/domain/shadowing/transcript";
 import { STATUS_LABELS } from "@/domain/shadowing/types";
 import type { ShadowingStatus } from "@/generated/prisma/client";
 import { formatVnDate, vnDate } from "@/lib/time";
 import { prisma } from "@/server/db";
 import { requireStaff } from "@/server/http/page-guards";
+import { backfillMissingLineCounts } from "@/server/shadowing/store";
 
 const STATUS_BADGE: Record<ShadowingStatus, string> = { DRAFT: "badge-gold", PUBLISHED: "badge-success", ARCHIVED: "" };
 
@@ -15,6 +15,7 @@ function duration(sec: number | null) {
 
 export default async function ShadowingAdminPage() {
   await requireStaff("manageLessons");
+  await backfillMissingLineCounts();
   const rows = await prisma.shadowingExercise.findMany({
     orderBy: [{ order: "asc" }, { createdAt: "asc" }],
     select: {
@@ -26,7 +27,7 @@ export default async function ShadowingAdminPage() {
       order: true,
       youtubeId: true,
       durationSec: true,
-      transcript: true,
+      lineCount: true,
       captionSource: true,
       updatedAt: true,
       _count: { select: { attempts: true } },
@@ -67,7 +68,7 @@ export default async function ShadowingAdminPage() {
                     </small>
                   </td>
                   <td>{r.level ?? "–"}</td>
-                  <td>{transcriptLines(r.transcript).length}</td>
+                  <td>{r.lineCount ?? 0}</td>
                   <td>{r._count.attempts}</td>
                   <td>
                     <span className={`badge ${STATUS_BADGE[r.status]}`}>{STATUS_LABELS[r.status]}</span>

@@ -2,13 +2,14 @@ import "server-only";
 import { randomInt } from "node:crypto";
 import { Prisma, type Payment } from "@/generated/prisma/client";
 import {
-  DAYS_PER_MONTH,
   formatVnd,
   packageNameOf,
   PAYMENT_CODE_PATTERN,
   PAYMENT_CODE_PREFIX,
   planOf,
+  type PlanId,
   type PaymentView,
+  type ReminderChannel,
 } from "@/domain/payment";
 import { Problem } from "@/lib/errors";
 import { vnDate } from "@/lib/time";
@@ -17,6 +18,7 @@ import { appUrl } from "@/server/jobs";
 import { notify } from "@/server/notify";
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const DAY_MS = 86_400_000;
 
 function env(name: string): string {
   return process.env[name]?.trim() ?? "";
@@ -37,12 +39,20 @@ function qrUrl(bank: NonNullable<ReturnType<typeof bankConfig>>, p: Pick<Payment
   return `https://img.vietqr.io/image/${encodeURIComponent(bank.bankId)}-${encodeURIComponent(bank.accountNo)}-compact2.png?${params}`;
 }
 
+function asPlanId(value: string): PlanId {
+  return value === "email" ? "email" : "full";
+}
+
 export function toPaymentView(p: Payment): PaymentView {
   const bank = bankConfig();
+  const plan = planOf(p.planId);
+  const planId = asPlanId(p.planId);
   return {
     code: p.code,
-    months: p.months,
+    planId,
+    days: p.days,
     amount: p.amount,
+    channels: plan?.channels ?? (planId === "full" ? (["email", "zalo"] as ReminderChannel[]) : (["email"] as ReminderChannel[])),
     status: p.status,
     qrUrl: bank ? qrUrl(bank, p) : null,
     bank: bank && { name: bank.name, accountNo: bank.accountNo, accountName: bank.accountName },
@@ -56,17 +66,19 @@ function newCode(): string {
 }
 
 /** Reuses the learner's unpaid order for the same plan, so re-opening the page keeps the same QR. */
-export async function openPayment(userId: string, months: unknown): Promise<Payment> {
-  const plan = planOf(months);
+export async function openPayment(userId: string, planId: unknown): Promise<Payment> {
+  const plan = planOf(planId);
   if (!plan) throw new Problem("Gói học không hợp lệ.");
   const pending = await prisma.payment.findFirst({
-    where: { userId, months: plan.months, amount: plan.amount, status: "PENDING" },
+    where: { userId, planId: plan.id, amount: plan.amount, status: "PENDING" },
     orderBy: { createdAt: "desc" },
   });
   if (pending) return pending;
   for (let i = 0; ; i++) {
     try {
-      return await prisma.payment.create({ data: { userId, code: newCode(), months: plan.months, amount: plan.amount } });
+      return await prisma.payment.create({
+        data: { userId, code: newCode(), planId: plan.id, days: plan.days, amount: plan.amount },
+      });
     } catch (error) {
       const duplicate = error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
       if (!duplicate || i >= 3) throw error;
@@ -114,19 +126,26 @@ export async function recordTransfer(t: IncomingTransfer): Promise<TransferOutco
       // Paying while a package is still running extends it; an account without an end date stays unlimited.
       const running = user.status === "ACTIVE" && (!user.accessEndsAt || user.accessEndsAt > now);
       const from = running && user.accessEndsAt ? user.accessEndsAt : now;
-      const packageName = packageNameOf(payment.months);
+      const plan = planOf(payment.planId);
+      const planId = asPlanId(payment.planId);
+      const packageName = packageNameOf(planId);
+      const channels = plan?.channels ?? (planId === "full" ? ["email", "zalo"] : ["email"]);
       await tx.user.update({
         where: { id: user.id },
         data: {
           status: "ACTIVE",
           packageName,
+          reminderChannels: channels,
           activatedAt: user.activatedAt ?? now,
-          accessEndsAt: running && !user.accessEndsAt ? null : new Date(from.getTime() + payment.months * DAYS_PER_MONTH * 86_400_000),
+          accessEndsAt: running && !user.accessEndsAt ? null : new Date(from.getTime() + payment.days * DAY_MS),
           lockAt: null,
         },
       });
       await tx.staffNote.create({
-        data: { learnerId: user.id, body: `Thanh toán QR ${formatVnd(payment.amount)} (mã ${payment.code}), tự động kích hoạt ${packageName}.` },
+        data: {
+          learnerId: user.id,
+          body: `Thanh toán QR ${formatVnd(payment.amount)} (mã ${payment.code}), tự động kích hoạt ${packageName}.`,
+        },
       });
       activated = { userId: user.id, name: user.name };
       return "paid";
