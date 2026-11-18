@@ -4,14 +4,16 @@ import { OnboardingForm, type OnboardingValues } from "@/components/onboarding/o
 import { isTrial } from "@/domain/access";
 import { requireUser } from "@/server/http/page-guards";
 import { isCurrentProfile } from "@/domain/profile";
+import { loadSessionPlan } from "@/server/auth";
 
 export default async function OnboardingPage() {
   const user = await requireUser();
-  const current = isCurrentProfile(user.profile);
+  const data = await loadSessionPlan(user.id);
+  const current = isCurrentProfile(data.profile);
   const trial = isTrial(user);
-  const done = Boolean(user.plan && current);
+  const done = Boolean(data.plan && current);
   if (done && !trial) redirect("/today");
-  const p = done && current ? user.profile : null;
+  const p = done && current ? data.profile : null;
   const initial: Partial<OnboardingValues> | undefined = p
     ? {
         age: p.age ? String(p.age) : "",
@@ -38,7 +40,7 @@ export default async function OnboardingPage() {
       </div>
       {trial && <CheckoutSteps current={0} formDone={done} />}
       <OnboardingForm
-        restart={Boolean(user.plan && !current)}
+        restart={Boolean(data.plan && !current)}
         editing={done}
         defaultName={user.isDemo ? "" : user.name}
         initial={initial}

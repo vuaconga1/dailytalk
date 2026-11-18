@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import type { Prisma } from "@/generated/prisma/client";
-import { normalizeLesson } from "@/domain/content";
+import { normalizeLessonLean, type LessonLean } from "@/domain/lesson-lean";
 import type { HistoryItem, Summary, WeekReview } from "@/domain/types";
 import { streak } from "@/domain/stats";
 import { buildWeekReview, weekOf } from "@/domain/week";
@@ -10,17 +10,22 @@ import { prisma } from "@/server/db";
 type AttemptHistoryRow = {
   day: number;
   localDate: string;
-  lesson: unknown;
+  lessonTitle: string | null;
+  lessonLean: unknown;
   summary: unknown;
   completed: boolean;
 };
 
+function leanOf(r: { lessonTitle: string | null; lessonLean: unknown }): LessonLean {
+  return normalizeLessonLean(r.lessonLean, r.lessonTitle ?? "");
+}
+
 function toHistoryItem(r: AttemptHistoryRow): HistoryItem {
-  const l = normalizeLesson(r.lesson);
+  const l = leanOf(r);
   return {
     day: r.day,
     date: r.localDate,
-    title: l.title,
+    title: r.lessonTitle || l.title,
     situation: l.situation,
     level: l.level,
     goal: l.goal,
@@ -29,10 +34,10 @@ function toHistoryItem(r: AttemptHistoryRow): HistoryItem {
   };
 }
 
-function toWeekRow(r: { day: number; lesson: unknown; summary: unknown; completed: boolean }) {
+function toWeekRow(r: { day: number; lessonTitle: string | null; lessonLean: unknown; summary: unknown; completed: boolean }) {
   return {
     day: r.day,
-    lesson: normalizeLesson(r.lesson),
+    lesson: leanOf(r),
     summary: r.summary as Summary | null,
     completed: r.completed,
   };
@@ -68,20 +73,21 @@ export const getTodayStatsHistory = cache(async (userId: string): Promise<Histor
   }));
 });
 
-/** Plan roadmap: day + title + completed (no summary JSON). */
+/** Plan roadmap: day + title + completed (no lesson JSON). */
 export const getPlanHistory = cache(async (userId: string): Promise<Pick<HistoryItem, "day" | "title" | "completed">[]> => {
   const rows = await prisma.attempt.findMany({
     where: { userId },
     orderBy: { day: "desc" },
     select: {
       day: true,
-      lesson: true,
+      lessonTitle: true,
+      plannedTitle: true,
       completed: true,
     },
   });
   return rows.map((r) => ({
     day: r.day,
-    title: normalizeLesson(r.lesson).title,
+    title: r.lessonTitle || r.plannedTitle || "",
     completed: r.completed,
   }));
 });
@@ -89,12 +95,13 @@ export const getPlanHistory = cache(async (userId: string): Promise<Pick<History
 const HISTORY_SELECT = {
   day: true,
   localDate: true,
-  lesson: true,
+  lessonTitle: true,
+  lessonLean: true,
   summary: true,
   completed: true,
 } satisfies Prisma.AttemptSelect;
 
-const loadFullHistoryRows = cache(async (userId: string): Promise<AttemptHistoryRow[]> => {
+const loadHistoryRows = cache(async (userId: string): Promise<AttemptHistoryRow[]> => {
   return prisma.attempt.findMany({
     where: { userId },
     orderBy: { day: "desc" },
@@ -103,28 +110,28 @@ const loadFullHistoryRows = cache(async (userId: string): Promise<AttemptHistory
 });
 
 export const getHistory = cache(async (userId: string): Promise<HistoryItem[]> => {
-  const rows = await loadFullHistoryRows(userId);
+  const rows = await loadHistoryRows(userId);
   return rows.map(toHistoryItem);
 });
 
 async function weekRows(where: Prisma.AttemptWhereInput) {
   const rows = await prisma.attempt.findMany({
     where,
-    select: { day: true, lesson: true, summary: true, completed: true },
+    select: { day: true, lessonTitle: true, lessonLean: true, summary: true, completed: true },
   });
   return rows.map(toWeekRow);
 }
 
 /** Reviews of every study week the learner has started, latest first. */
 export const getWeekReviews = cache(async (userId: string): Promise<WeekReview[]> => {
-  const rows = (await loadFullHistoryRows(userId)).map(toWeekRow);
+  const rows = (await loadHistoryRows(userId)).map(toWeekRow);
   const weeks = [...new Set(rows.map((r) => weekOf(r.day).week))].sort((a, b) => b - a);
   return weeks.map((w) => buildWeekReview(w, rows));
 });
 
 /** History page: one DB round-trip for list + week reviews. */
 export const getHistoryPageData = cache(async (userId: string): Promise<{ history: HistoryItem[]; weekReviews: WeekReview[] }> => {
-  const raw = await loadFullHistoryRows(userId);
+  const raw = await loadHistoryRows(userId);
   const history = raw.map(toHistoryItem);
   const weekRowsMapped = raw.map(toWeekRow);
   const weeks = [...new Set(weekRowsMapped.map((r) => weekOf(r.day).week))].sort((a, b) => b - a);

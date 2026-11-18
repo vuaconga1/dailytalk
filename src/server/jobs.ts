@@ -7,7 +7,7 @@ import { prisma } from "@/server/db";
 import { isCurrentProfile } from "@/domain/profile";
 import { REMIND_LATE_MIN, REMIND_LEAD_MIN, scheduleStudyReminder, type ScheduleResult } from "@/server/integrations/qstash";
 import { minutesOf, shiftDays, vnDate, vnMinuteOfDay, weekStartOf } from "@/lib/time";
-import type { Lesson, Summary } from "@/domain/types";
+import type { Summary } from "@/domain/types";
 
 const BATCH = 5;
 
@@ -214,7 +214,7 @@ export async function buildWeeklyReports(weekStart: string): Promise<number> {
   await inBatches(learners, async ({ id }) => {
     const attempts = await prisma.attempt.findMany({
       where: { userId: id, completed: true, localDate: { gte: weekStart, lte: weekEnd } },
-      select: { localDate: true, lesson: true, summary: true },
+      select: { localDate: true, lessonTitle: true, summary: true },
     });
     const summaries = attempts.map((a) => a.summary as Summary | null);
     const sessionsDone = attempts.length;
@@ -222,7 +222,7 @@ export async function buildWeeklyReports(weekStart: string): Promise<number> {
     const highlights: WeeklyHighlights = {
       errors: topCounts(summaries.flatMap((s) => (s?.errors ?? []).map((e) => e.issue)), 3),
       reviewItems: topCounts(summaries.flatMap((s) => s?.review_items ?? []), 5),
-      notAchieved: attempts.filter((a, i) => summaries[i]?.goal_status !== "achieved").map((a) => (a.lesson as Lesson).title),
+      notAchieved: attempts.filter((a, i) => summaries[i]?.goal_status !== "achieved").map((a) => a.lessonTitle || "—"),
     };
     const reasons = [
       sessionsDone < 3 ? `Chỉ học ${sessionsDone}/7 ngày` : null,

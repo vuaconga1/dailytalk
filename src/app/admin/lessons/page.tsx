@@ -1,8 +1,6 @@
 import { ApiForm } from "@/components/admin/api-form";
 import { LessonBankDetails } from "@/components/admin/lesson-bank-details";
 import { canGenerateSpeech } from "@/server/ai/config";
-import { normalizeLesson } from "@/domain/content";
-import { lessonClips } from "@/server/learning/audio";
 import { requireStaff } from "@/server/http/page-guards";
 import { prisma } from "@/server/db";
 import { levelInfo, LEVEL_IDS, type LevelId } from "@/domain/profile-options";
@@ -11,7 +9,6 @@ import { formatVnDate, vnDate } from "@/lib/time";
 
 export default async function LessonsPage() {
   await requireStaff("manageLessons");
-  // Metadata columns for the table + lesson only to compute audio keys (lesson is not passed into RSC props).
   const rows = await prisma.lessonContent.findMany({
     orderBy: [{ uses: "desc" }, { lastUsed: "desc" }],
     take: 200,
@@ -23,21 +20,10 @@ export default async function LessonsPage() {
       level: true,
       uses: true,
       lastUsed: true,
-      lesson: true,
+      audioTotal: true,
+      audioReady: true,
     },
   });
-
-  const audio = rows.map((row) => {
-    const clips = lessonClips(normalizeLesson(row.lesson));
-    return { key: row.key, total: clips.length, clipKeys: clips.map((c) => c.key) };
-  });
-  const stored = await prisma.audioClip.findMany({
-    where: { key: { in: audio.flatMap((a) => a.clipKeys) } },
-    select: { key: true },
-  });
-  const have = new Set(stored.map((c) => c.key));
-  const readyByKey = new Map(audio.map((a) => [a.key, a.clipKeys.filter((k) => have.has(k)).length] as const));
-  const totalByKey = new Map(audio.map((a) => [a.key, a.total] as const));
 
   return (
     <section>
@@ -62,8 +48,8 @@ export default async function LessonsPage() {
           </thead>
           <tbody>
             {rows.map((row) => {
-              const ready = readyByKey.get(row.key) ?? 0;
-              const total = totalByKey.get(row.key) ?? 0;
+              const ready = row.audioReady;
+              const total = row.audioTotal;
               return (
                 <tr key={row.key}>
                   <td>
@@ -80,7 +66,7 @@ export default async function LessonsPage() {
                     <small className="block text-muted">{formatVnDate(vnDate(row.lastUsed))}</small>
                   </td>
                   <td>
-                    <span className={`badge ${ready === total ? "" : "badge-gold"}`}>
+                    <span className={`badge ${total > 0 && ready >= total ? "" : "badge-gold"}`}>
                       {ready}/{total}
                     </span>
                   </td>
@@ -101,7 +87,7 @@ export default async function LessonsPage() {
             {!rows.length && (
               <tr>
                 <td colSpan={6} className="py-8 text-center text-muted">
-                  Ngân hàng chưa có bài nào.
+                  Chưa có bài trong ngân hàng.
                 </td>
               </tr>
             )}

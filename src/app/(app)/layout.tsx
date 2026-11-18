@@ -23,9 +23,9 @@ function initials(name: string) {
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   if (isStaff(user.role)) redirect("/admin");
-  const days = user.plan ? await getStreakDays(user.id) : null;
+  const days = user.hasPlan ? await getStreakDays(user.id) : null;
 
-  const hasPlan = Boolean(user.plan);
+  const hasPlan = user.hasPlan;
   const showShadowing = hasActiveAccess(user);
 
   return (

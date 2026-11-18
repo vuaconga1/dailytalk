@@ -3,7 +3,7 @@ import { EXPIRING_SOON_DAYS, hasActiveAccess } from "@/domain/access";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/server/db";
 import { shiftDays, vnDate } from "@/lib/time";
-import { normalizeLesson } from "@/domain/content";
+import { normalizeLessonLean } from "@/domain/lesson-lean";
 import type { LearnerProfile, Summary } from "@/domain/types";
 
 /** An active learner with no session for this many days needs a consultant's call. */
@@ -156,13 +156,39 @@ export async function dashboardCounts() {
   return { leads, active, paused, support: learners };
 }
 
+const DETAIL_ATTEMPT_SELECT = {
+  id: true,
+  day: true,
+  localDate: true,
+  lessonTitle: true,
+  lessonLean: true,
+  plannedTitle: true,
+  selectedBy: true,
+  focus: true,
+  completed: true,
+  summary: true,
+} satisfies Prisma.AttemptSelect;
+
 export async function learnerDetail(id: string) {
   const user = await prisma.user.findFirst({
     where: { id, role: "LEARNER" },
-    include: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true,
+      status: true,
+      isDemo: true,
+      profile: true,
+      plan: true,
+      packageName: true,
+      activatedAt: true,
+      accessEndsAt: true,
+      createdAt: true,
+      consultantId: true,
       consultant: { select: { id: true, name: true } },
       zaloLink: true,
-      attempts: { orderBy: { day: "desc" }, include: { practice: { select: { turns: true, startedAt: true } } } },
+      attempts: { orderBy: { day: "desc" }, select: DETAIL_ATTEMPT_SELECT },
       notifications: { orderBy: { createdAt: "desc" }, take: 20 },
       weeklyReports: { orderBy: { weekStart: "desc" }, take: 8 },
       notesAbout: { orderBy: { createdAt: "desc" }, include: { author: { select: { name: true } } } },
@@ -172,7 +198,14 @@ export async function learnerDetail(id: string) {
   return {
     ...user,
     profile: user.profile as LearnerProfile | null,
-    attempts: user.attempts.map((a) => ({ ...a, lesson: normalizeLesson(a.lesson), summary: a.summary as Summary | null })),
+    attempts: user.attempts.map((a) => {
+      const lean = normalizeLessonLean(a.lessonLean, a.lessonTitle ?? "");
+      return {
+        ...a,
+        lesson: lean,
+        summary: a.summary as Summary | null,
+      };
+    }),
   };
 }
 

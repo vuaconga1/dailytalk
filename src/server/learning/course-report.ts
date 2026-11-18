@@ -1,5 +1,5 @@
 import "server-only";
-import { normalizeLesson } from "@/domain/content";
+import { normalizeLessonLean } from "@/domain/lesson-lean";
 import { buildCourseReport, courseLength, type CourseReport } from "@/domain/course-report";
 import type { Summary } from "@/domain/types";
 import type { SessionUser } from "@/server/auth";
@@ -11,7 +11,7 @@ export async function getCourseReport(user: SessionUser): Promise<CourseReport |
   const [rows, studyTimes, shadowing] = await Promise.all([
     prisma.attempt.findMany({
       where: { userId: user.id },
-      select: { day: true, localDate: true, lesson: true, summary: true, completed: true },
+      select: { day: true, localDate: true, lessonTitle: true, lessonLean: true, summary: true, completed: true },
     }),
     prisma.studyTime.findMany({ where: { userId: user.id }, select: { localDate: true, seconds: true } }),
     prisma.shadowingAttempt.aggregate({
@@ -22,7 +22,11 @@ export async function getCourseReport(user: SessionUser): Promise<CourseReport |
     }),
   ]);
   return buildCourseReport({
-    rows: rows.map((r) => ({ ...r, lesson: normalizeLesson(r.lesson), summary: r.summary as Summary | null })),
+    rows: rows.map((r) => ({
+      ...r,
+      lesson: normalizeLessonLean(r.lessonLean, r.lessonTitle ?? ""),
+      summary: r.summary as Summary | null,
+    })),
     totalDays: courseLength(user.plan),
     studyTimes,
     startLevel: user.profile.classification.level,

@@ -19,7 +19,11 @@ export function qstashConfigured(): boolean {
 
 function client(): Client | null {
   const token = env("QSTASH_TOKEN");
-  return token ? new Client({ token }) : null;
+  if (!token) return null;
+  // Upstash tokens are base64; a missing trailing "=" (easy when pasting) causes 401.
+  const normalized = token.length % 4 === 0 ? token : token.padEnd(token.length + ((4 - (token.length % 4)) % 4), "=");
+  const baseUrl = env("QSTASH_URL") || undefined;
+  return new Client({ token: normalized, ...(baseUrl ? { baseUrl } : {}) });
 }
 
 export function qstashReceiver(): Receiver | null {

@@ -30,6 +30,8 @@ export type SessionUser = {
   isDemo: boolean;
   /** Channels unlocked by the latest paid plan: "email" and/or "zalo". */
   reminderChannels: string[];
+  /** True when a study plan exists (shell uses this instead of loading plan JSON). */
+  hasPlan: boolean;
   profile: LearnerProfile | null;
   plan: StudyPlan | null;
   planSource: string | null;
@@ -144,6 +146,27 @@ export const SESSION_END_MESSAGES: Record<SessionEnd, string> = {
 
 type SessionState = { user: SessionUser | null; ended: SessionEnd | null };
 
+/** Shell session: no plan/profile JSON (soft-nav chrome). Plan pages call `loadSessionPlan`. */
+export const SESSION_SHELL_SELECT = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  status: true,
+  accessEndsAt: true,
+  lockAt: true,
+  isDemo: true,
+  reminderChannels: true,
+  planSource: true,
+} as const;
+
+/** Full session for jobs / reminders that need profile + plan in one round-trip. */
+export const SESSION_USER_SELECT = {
+  ...SESSION_SHELL_SELECT,
+  profile: true,
+  plan: true,
+} as const;
+
 /** Deduped within a single request (layout + page both call this). */
 export const getSessionState = cache(async (): Promise<SessionState> => {
   const jar = await cookies();
@@ -152,12 +175,12 @@ export const getSessionState = cache(async (): Promise<SessionState> => {
   if (!session) return { user: null, ended: null };
   const row = await prisma.user.findUnique({
     where: { id: session.uid },
-    select: { ...SESSION_USER_SELECT, sessionId: true, sessionIp: true, sessionSeenAt: true },
+    select: { ...SESSION_SHELL_SELECT, sessionId: true, sessionIp: true, sessionSeenAt: true },
   });
   if (!row) return { user: null, ended: null };
   const { sessionId, sessionIp, sessionSeenAt, ...rest } = row;
   if (sessionId !== session.sid) return { user: null, ended: "conflict" };
-  const user = toSessionUser(rest);
+  const user = toShellUser(rest);
   if (isLocked(user)) return { user: null, ended: "locked" };
 
   const ip = await requestIp();
@@ -172,23 +195,63 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   return (await getSessionState()).user;
 }
 
-export const SESSION_USER_SELECT = {
-  id: true,
-  name: true,
-  email: true,
-  role: true,
-  status: true,
-  accessEndsAt: true,
-  lockAt: true,
-  isDemo: true,
-  reminderChannels: true,
-  profile: true,
-  plan: true,
-  planSource: true,
-} as const;
+/** Loads plan + profile once per request when a page needs them (`requirePlan`). */
+export const loadSessionPlan = cache(async (userId: string): Promise<{ profile: LearnerProfile | null; plan: StudyPlan | null; planSource: string | null }> => {
+  const row = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { profile: true, plan: true, planSource: true },
+  });
+  if (!row) return { profile: null, plan: null, planSource: null };
+  return {
+    profile: row.profile as LearnerProfile | null,
+    plan: row.plan as StudyPlan | null,
+    planSource: row.planSource,
+  };
+});
 
-type SessionUserRow = Omit<SessionUser, "profile" | "plan"> & { profile: unknown; plan: unknown };
+type ShellRow = {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  status: AccountStatus;
+  accessEndsAt: Date | null;
+  lockAt: Date | null;
+  isDemo: boolean;
+  reminderChannels: string[];
+  planSource: string | null;
+};
+
+type SessionUserRow = ShellRow & { profile: unknown; plan: unknown };
+
+export function toShellUser(row: ShellRow): SessionUser {
+  return {
+    ...row,
+    hasPlan: Boolean(row.planSource),
+    profile: null,
+    plan: null,
+  };
+}
 
 export function toSessionUser(row: SessionUserRow): SessionUser {
-  return { ...row, profile: row.profile as LearnerProfile | null, plan: row.plan as StudyPlan | null };
+  return {
+    ...row,
+    hasPlan: Boolean(row.planSource) || row.plan != null,
+    profile: row.profile as LearnerProfile | null,
+    plan: row.plan as StudyPlan | null,
+  };
+}
+
+/** API handlers: hydrate profile/plan once when the lean shell session omitted them. */
+export async function withLearnerProfile(user: SessionUser): Promise<SessionUser & { profile: LearnerProfile }> {
+  if (user.profile) return user as SessionUser & { profile: LearnerProfile };
+  const data = await loadSessionPlan(user.id);
+  if (!data.profile) throw new Problem("Chưa có hồ sơ.");
+  return {
+    ...user,
+    hasPlan: Boolean(data.plan) || Boolean(data.planSource),
+    profile: data.profile,
+    plan: data.plan,
+    planSource: data.planSource,
+  };
 }

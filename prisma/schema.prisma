@@ -89,6 +89,10 @@ model Attempt {
   /// YYYY-MM-DD in Asia/Ho_Chi_Minh
   localDate       String
   lesson          Json
+  /// Denormalized from lesson.title for lean plan/history/admin lists.
+  lessonTitle     String?
+  /// Lean lesson fields for week/course reviews (no dialogue/roleplay).
+  lessonLean      Json?
   /// LessonContent.key the snapshot came from (null for static demo lessons).
   lessonKey       String?
   /// Situation title the reference roadmap suggested for this day.
@@ -169,6 +173,10 @@ model LessonContent {
   /// "openai" | "static"
   source    String
   uses      Int      @default(0)
+  /// Dialogue lines + vocabulary clips the player expects.
+  audioTotal Int     @default(0)
+  /// How many of those clips already exist in AudioClip.
+  audioReady Int     @default(0)
   createdAt DateTime @default(now())
   lastUsed  DateTime @default(now())
 

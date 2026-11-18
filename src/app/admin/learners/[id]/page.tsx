@@ -9,7 +9,7 @@ import { requireStaff } from "@/server/http/page-guards";
 import { isCurrentProfile, profileLabels } from "@/domain/profile";
 import { FREQUENCIES, labelOf, levelInfo } from "@/domain/profile-options";
 import { formatVnDate, vnDate } from "@/lib/time";
-import type { StudyPlan, Turn } from "@/domain/types";
+import type { StudyPlan } from "@/domain/types";
 
 const STATUS_LABELS = { LEAD: PAYMENT_ENABLED ? "Học thử / chờ thanh toán" : "Chờ kích hoạt", ACTIVE: "Đang học", PAUSED: "Tạm dừng", EXPIRED: "Hết hạn" } as const;
 const GOAL_LABELS = { achieved: "Đạt", needs_review: "Cần ôn", insufficient_evidence: "Chưa đủ dữ liệu" } as const;
@@ -108,7 +108,7 @@ export default async function LearnerDetailPage({ params }: { params: Promise<{ 
               <tbody>
                 {learner.attempts.map((a) => {
                   const planned = a.plannedTitle && a.plannedTitle !== a.lesson.title ? a.plannedTitle : null;
-                  const turns = (a.practice?.turns as Turn[] | undefined)?.filter((t) => t.role === "user").length ?? 0;
+                  const turns = a.summary?.turn_count ?? 0;
                   return (
                     <tr key={a.id}>
                       <td>

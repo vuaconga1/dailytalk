@@ -4,6 +4,7 @@ import { canStudyDay } from "@/domain/access";
 import { fallbackLesson, normalizeLesson } from "@/domain/content";
 import { CURRICULUM_LEVEL, curriculumMeta, isModuleRef, renderLesson } from "@/domain/curriculum";
 import { buildReviewLesson, isReviewDay, reviewSources, type ReviewSource } from "@/domain/curriculum/review";
+import { toLessonLean } from "@/domain/lesson-lean";
 import { isLightPace, lightenLesson } from "@/domain/pace";
 import { profileLabels } from "@/domain/profile";
 import { shiftLevel } from "@/domain/profile-options";
@@ -89,6 +90,8 @@ async function fromBank(key: string, make: () => Promise<BankEntry | null>): Pro
         ...entry,
         lesson: entry.lesson as unknown as Prisma.InputJsonValue,
         uses: 1,
+        audioTotal: entry.lesson.dialogue.length + entry.lesson.vocabulary.length,
+        audioReady: 0,
       },
     ],
     skipDuplicates: true,
@@ -104,10 +107,10 @@ async function fromBank(key: string, make: () => Promise<BankEntry | null>): Pro
  */
 async function ensureLessonContent(user: SessionUser, target: DayTarget): Promise<{ lesson: Lesson; key: string | null }> {
   const profile = user.profile as LearnerProfile;
-  const base = target.ref ? renderLesson(target.ref, profile, target.level) : null;
+  const base = target.ref ? await renderLesson(target.ref, profile, target.level) : null;
 
   if (base) {
-    const meta = curriculumMeta(profile);
+    const meta = await curriculumMeta(profile);
     const authored = {
       key: base.id,
       title: base.title,
@@ -193,7 +196,7 @@ async function ensureLessonContent(user: SessionUser, target: DayTarget): Promis
 async function reviewLesson(user: SessionUser, day: number, ref: string): Promise<Lesson | null> {
   const profile = user.profile as LearnerProfile;
   const plan = user.plan as StudyPlan;
-  const base = renderLesson(ref, profile, CURRICULUM_LEVEL);
+  const base = await renderLesson(ref, profile, CURRICULUM_LEVEL);
   if (!base) return null;
   const days = reviewSources(day);
   const studied = await prisma.attempt.findMany({
@@ -204,7 +207,7 @@ async function reviewLesson(user: SessionUser, day: number, ref: string): Promis
   for (const d of days) {
     const planRef = plan.days[d - 1]?.ref;
     const row = studied.find((r) => r.day === d);
-    const lesson = row ? normalizeLesson(row.lesson) : planRef ? renderLesson(planRef, profile, CURRICULUM_LEVEL) : null;
+    const lesson = row ? normalizeLesson(row.lesson) : planRef ? await renderLesson(planRef, profile, CURRICULUM_LEVEL) : null;
     if (lesson) sources.push({ day: d, lesson, module: isModuleRef(planRef) });
   }
   return sources.length ? buildReviewLesson(base, sources) : null;
@@ -248,9 +251,15 @@ export async function updateWorkingLevel(userId: string, profile: LearnerProfile
     where: { userId, completed: true },
     orderBy: { day: "desc" },
     take: 2,
-    select: { day: true, lesson: true, summary: true },
+    select: { day: true, lessonLean: true, lesson: true, summary: true },
   });
-  const signals = rows.filter((r) => normalizeLesson(r.lesson).level === current).map((r) => (r.summary as Summary | null)?.level_signal);
+  const signals = rows
+    .filter((r) => {
+      const lean = r.lessonLean as { level?: string } | null;
+      const level = lean?.level ?? normalizeLesson(r.lesson).level;
+      return level === current;
+    })
+    .map((r) => (r.summary as Summary | null)?.level_signal);
   const first = rows.length === 1 && rows[0].day === 1;
   const needed = first ? 1 : 2;
   let next = current;
@@ -306,6 +315,7 @@ async function openDay(user: SessionUser, day: number): Promise<AttemptView> {
   const selected = await selectDay(user, day);
   const { choice, planned, key } = selected;
   const lesson = isLightPace(user.profile) ? lightenLesson(selected.lesson, day) : selected.lesson;
+  const lessonLean = toLessonLean(lesson);
   try {
     const created = await prisma.attempt.create({
       data: {
@@ -313,6 +323,8 @@ async function openDay(user: SessionUser, day: number): Promise<AttemptView> {
         day,
         localDate: today,
         lesson: lesson as unknown as Prisma.InputJsonValue,
+        lessonTitle: lesson.title,
+        lessonLean: lessonLean as unknown as Prisma.InputJsonValue,
         lessonKey: key,
         plannedTitle: planned.title,
         selectedBy: choice.selectedBy,

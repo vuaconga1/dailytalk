@@ -6,10 +6,12 @@ import { classify } from "../src/domain/classify";
 import { LESSONS } from "../src/domain/content";
 import { buildPlan, renderLesson } from "../src/domain/curriculum";
 import { framesUsed } from "../src/domain/frames";
+import { toLessonLean } from "../src/domain/lesson-lean";
 import type { ProfileInput } from "../src/domain/profile";
 import { prisma } from "../src/server/db";
 import { shiftDays, vnDate } from "../src/lib/time";
-import type { LearnerProfile, LevelSignal, StudyPlan, Summary, Turn, Lesson } from "../src/domain/types";
+import type { LearnerProfile, StudyPlan, Summary, Turn, Lesson } from "../src/domain/types";
+import type { Prisma } from "../src/generated/prisma/client";
 
 const EMAIL = "finish@gmail.com";
 const PASSWORD = "123";
@@ -36,14 +38,13 @@ const PROFILE: LearnerProfile = {
   working_level: "intermediate", // Advanced to intermediate after 30 days of progress
 };
 
-const PLAN: StudyPlan = buildPlan(PROFILE);
-
 function eveningOf(date: string, minute: number): Date {
   return new Date(`${date}T20:${String(30 + minute).padStart(2, "0")}:00+07:00`);
 }
 
 async function run() {
   console.log(`Starting seed for ${EMAIL}...`);
+  const PLAN: StudyPlan = await buildPlan(PROFILE);
   const today = vnDate(); // e.g. 2026-11-13
   const totalDays = 30;
 
@@ -85,7 +86,7 @@ async function run() {
     const started = eveningOf(date, (i % 5) * 2);
 
     let lesson: Lesson | null = planDay?.ref
-      ? renderLesson(planDay.ref, PROFILE, PROFILE.working_level ?? "elementary")
+      ? await renderLesson(planDay.ref, PROFILE, PROFILE.working_level ?? "elementary")
       : null;
     if (!lesson) {
       lesson = LESSONS.L11;
@@ -174,21 +175,23 @@ async function run() {
         userId: user.id,
         day,
         localDate: date,
-        lesson: lesson as any,
+        lesson: lesson as unknown as Prisma.InputJsonValue,
+        lessonTitle: lesson.title,
+        lessonLean: toLessonLean(lesson) as unknown as Prisma.InputJsonValue,
         plannedTitle: planDay.title,
         selectedBy: "plan",
         focus: planDay.focus,
         wordsDone: true,
         shadowDone: true,
         completed: true,
-        summary: summary as any,
+        summary: summary as unknown as Prisma.InputJsonValue,
         practice: {
           create: {
             userId: user.id,
             startedAt: started,
             deadline: new Date(started.getTime() + 300_000),
             ended: true,
-            turns: turns as any,
+            turns: turns as unknown as Prisma.InputJsonValue,
           },
         },
       },

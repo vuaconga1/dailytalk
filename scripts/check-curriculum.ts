@@ -4,7 +4,7 @@
  *   npm run check:curriculum
  *   npm run check:curriculum -- --cluster sales     (one cluster only)
  */
-import { buildPlan, CLUSTERS, coverage, isModuleRef, renderLesson } from "../src/domain/curriculum";
+import { buildPlan, coverage, isModuleRef, loadAllClusters, loadCluster, renderLesson } from "../src/domain/curriculum";
 import { INDUSTRY_MEMBERS } from "../src/domain/curriculum/members";
 import { buildReviewLesson, REVIEW_DAYS, reviewSources } from "../src/domain/curriculum/review";
 import { INTERVIEW_DAYS, TRAVEL_DAYS } from "../src/domain/curriculum/modules";
@@ -64,113 +64,122 @@ function checkNewWords(where: string, days: CurriculumDay[]) {
   });
 }
 
-for (const cluster of Object.values(CLUSTERS)) {
-  if (only && cluster.id !== only) continue;
-  if (cluster.days.length !== 30) err(cluster.id, `has ${cluster.days.length} days, needs 30`);
-  for (const a of WORK_AUDIENCES) if (!cluster.people[a]?.[0] || !cluster.people[a]?.[1]) err(cluster.id, `people.${a} missing`);
-  cluster.days.forEach((d, i) => checkDay(`${cluster.id} day ${i + 1}`, d, true));
-  checkNewWords(cluster.id, cluster.days);
-}
-if (!only) {
-  [...TRAVEL_DAYS, ...INTERVIEW_DAYS].forEach((d, i) => checkDay(`module ${i}`, d, false));
-  checkNewWords("modules", [...TRAVEL_DAYS, ...INTERVIEW_DAYS]);
-  if (TRAVEL_DAYS.length !== 2 || INTERVIEW_DAYS.length !== 2) err("modules", "travel and interview need 2 days each");
-}
-
-// Member vars must exist in the cluster; every offered position must be mapped explicitly.
-const labels = new Map(INDUSTRIES.map((i) => [i.id, new Set(i.positions.map((p) => p.id))]));
-for (const [industry, { fallback, positions }] of Object.entries(INDUSTRY_MEMBERS)) {
-  if (!labels.has(industry)) err("members", `unknown industry ${industry}`);
-  for (const [label, member] of [["(fallback)", fallback] as const, ...Object.entries(positions)]) {
-    if (label !== "(fallback)" && !labels.get(industry)?.has(slugify(label)))
-      err("members", `${industry}: "${label}" is not in profile-options`);
-    for (const key of Object.keys(member.vars ?? {})) {
-      if (!(key in CLUSTERS[member.cluster].vars))
-        err("members", `${industry}/${label}: var {${key}} not defined in cluster ${member.cluster}`);
-    }
+async function main() {
+  const CLUSTERS = await loadAllClusters();
+  for (const cluster of Object.values(CLUSTERS)) {
+    if (only && cluster.id !== only) continue;
+    if (cluster.days.length !== 30) err(cluster.id, `has ${cluster.days.length} days, needs 30`);
+    for (const a of WORK_AUDIENCES) if (!cluster.people[a]?.[0] || !cluster.people[a]?.[1]) err(cluster.id, `people.${a} missing`);
+    cluster.days.forEach((d, i) => checkDay(`${cluster.id} day ${i + 1}`, d, true));
+    checkNewWords(cluster.id, cluster.days);
   }
-}
-for (const { industry, position, label } of coverage()) {
-  if (position !== "other" && !Object.keys(INDUSTRY_MEMBERS[industry]?.positions ?? {}).some((l) => slugify(l) === position)) {
-    err("members", `${industry}: position "${label}" has no mapping`);
+  if (!only) {
+    [...TRAVEL_DAYS, ...INTERVIEW_DAYS].forEach((d, i) => checkDay(`module ${i}`, d, false));
+    checkNewWords("modules", [...TRAVEL_DAYS, ...INTERVIEW_DAYS]);
+    if (TRAVEL_DAYS.length !== 2 || INTERVIEW_DAYS.length !== 2) err("modules", "travel and interview need 2 days each");
   }
-}
 
-// Render every position × audience combination and look for unfilled placeholders.
-const base = {
-  industry_other: "",
-  position_other: "",
-  goals: ["meetings"],
-  self_level: "elementary",
-  frequency: "weekly",
-  study_time: "20:00",
-  timezone: "Asia/Ho_Chi_Minh",
-  reminders: false,
-  classification: {
-    level: "elementary",
-    level_label: "",
-    summary_vi: "",
-    priorities: [],
-  },
-  working_level: "elementary",
-} as const;
-let rendered = 0;
-let reviews = 0;
-for (const { industry, position, member } of coverage()) {
-  if (only && member.cluster !== only) continue;
-  for (const audiences of [
-    [...WORK_AUDIENCES],
-    ["customers"],
-    ["partners"],
-    ["managers"],
-    ["colleagues"],
-    ["customers", "travel", "recruiters"],
-  ]) {
-    const profile = {
-      ...base,
-      industry,
-      position,
-      audiences,
-    } as unknown as LearnerProfile;
-    const plan = buildPlan(profile);
-    if (plan.days.length !== 30) err(`${industry}/${position}`, "plan is not 30 days");
-    const lessons = new Map<number, Lesson>();
-    for (const day of plan.days) {
-      let lesson;
-      try {
-        lesson = renderLesson(day.ref!, profile, "elementary");
-      } catch (e) {
-        err(`${member.cluster} ${day.ref}`, `render failed: ${(e as Error).message}`);
-        continue;
+  // Member vars must exist in the cluster; every offered position must be mapped explicitly.
+  const labels = new Map(INDUSTRIES.map((i) => [i.id, new Set(i.positions.map((p) => p.id))]));
+  for (const [industry, { fallback, positions }] of Object.entries(INDUSTRY_MEMBERS)) {
+    if (!labels.has(industry)) err("members", `unknown industry ${industry}`);
+    for (const [label, member] of [["(fallback)", fallback] as const, ...Object.entries(positions)]) {
+      if (label !== "(fallback)" && !labels.get(industry)?.has(slugify(label)))
+        err("members", `${industry}: "${label}" is not in profile-options`);
+      const clusterVars = (await loadCluster(member.cluster)).vars;
+      for (const key of Object.keys(member.vars ?? {})) {
+        if (!(key in clusterVars))
+          err("members", `${industry}/${label}: var {${key}} not defined in cluster ${member.cluster}`);
       }
-      if (!lesson) {
-        err(`${industry}/${position}`, `ref ${day.ref} does not render`);
-        continue;
-      }
-      rendered++;
-      lessons.set(day.day, lesson);
-      const left = JSON.stringify([day, lesson]).match(/\{[A-Za-z_]+\}/g);
-      if (left) err(`${industry}/${position} ${day.ref}`, `unfilled ${[...new Set(left)].join(" ")}`);
-    }
-    for (const day of REVIEW_DAYS) {
-      const where = `${member.cluster} review day ${day} [${audiences.join(",")}]`;
-      const sources = reviewSources(day).flatMap((d) =>
-        lessons.has(d) ? [{ day: d, lesson: lessons.get(d)!, module: isModuleRef(plan.days[d - 1].ref) }] : [],
-      );
-      const r = buildReviewLesson(lessons.get(day)!, sources);
-      reviews++;
-      if (sources.length !== 6) err(where, `has ${sources.length} source days, needs 6`);
-      if (r.frames.length !== 4 || r.dialogue.length !== 8) err(where, `${r.frames.length} frames / ${r.dialogue.length} lines, needs 4 / 8`);
-      const learner = r.dialogue.filter((_, i) => i % 2 === 1);
-      r.frames.forEach((f, i) => !usesFrame(f, learner[i] ?? "") && err(where, `frame "${f}" is not in learner line ${i + 1}`));
-      if (r.vocabulary.length !== 30) err(where, `recaps ${r.vocabulary.length} words, needs 30`);
     }
   }
+  for (const { industry, position, label } of coverage()) {
+    if (position !== "other" && !Object.keys(INDUSTRY_MEMBERS[industry]?.positions ?? {}).some((l) => slugify(l) === position)) {
+      err("members", `${industry}: position "${label}" has no mapping`);
+    }
+  }
+
+  // Render every position × audience combination and look for unfilled placeholders.
+  const base = {
+    industry_other: "",
+    position_other: "",
+    goals: ["meetings"],
+    self_level: "elementary",
+    frequency: "weekly",
+    study_time: "20:00",
+    timezone: "Asia/Ho_Chi_Minh",
+    reminders: false,
+    classification: {
+      level: "elementary",
+      level_label: "",
+      summary_vi: "",
+      priorities: [],
+    },
+    working_level: "elementary",
+  } as const;
+  let rendered = 0;
+  let reviews = 0;
+  for (const { industry, position, member } of coverage()) {
+    if (only && member.cluster !== only) continue;
+    for (const audiences of [
+      [...WORK_AUDIENCES],
+      ["customers"],
+      ["partners"],
+      ["managers"],
+      ["colleagues"],
+      ["customers", "travel", "recruiters"],
+    ]) {
+      const profile = {
+        ...base,
+        industry,
+        position,
+        audiences,
+      } as unknown as LearnerProfile;
+      const plan = await buildPlan(profile);
+      if (plan.days.length !== 30) err(`${industry}/${position}`, "plan is not 30 days");
+      const lessons = new Map<number, Lesson>();
+      for (const day of plan.days) {
+        let lesson;
+        try {
+          lesson = await renderLesson(day.ref!, profile, "elementary");
+        } catch (e) {
+          err(`${member.cluster} ${day.ref}`, `render failed: ${(e as Error).message}`);
+          continue;
+        }
+        if (!lesson) {
+          err(`${industry}/${position}`, `ref ${day.ref} does not render`);
+          continue;
+        }
+        rendered++;
+        lessons.set(day.day, lesson);
+        const left = JSON.stringify([day, lesson]).match(/\{[A-Za-z_]+\}/g);
+        if (left) err(`${industry}/${position} ${day.ref}`, `unfilled ${[...new Set(left)].join(" ")}`);
+      }
+      for (const day of REVIEW_DAYS) {
+        const where = `${member.cluster} review day ${day} [${audiences.join(",")}]`;
+        const sources = reviewSources(day).flatMap((d) =>
+          lessons.has(d) ? [{ day: d, lesson: lessons.get(d)!, module: isModuleRef(plan.days[d - 1].ref) }] : [],
+        );
+        const r = buildReviewLesson(lessons.get(day)!, sources);
+        reviews++;
+        if (sources.length !== 6) err(where, `has ${sources.length} source days, needs 6`);
+        if (r.frames.length !== 4 || r.dialogue.length !== 8) err(where, `${r.frames.length} frames / ${r.dialogue.length} lines, needs 4 / 8`);
+        const learner = r.dialogue.filter((_, i) => i % 2 === 1);
+        r.frames.forEach((f, i) => !usesFrame(f, learner[i] ?? "") && err(where, `frame "${f}" is not in learner line ${i + 1}`));
+        if (r.vocabulary.length !== 30) err(where, `recaps ${r.vocabulary.length} words, needs 30`);
+      }
+    }
+  }
+
+  const unique = [...new Set(problems)];
+  const shown = process.argv.includes("--all") ? unique.length : 80;
+  for (const p of unique.slice(0, shown)) console.log(`✗ ${p}`);
+  if (unique.length > shown) console.log(`… and ${unique.length - shown} more (--all to list every problem)`);
+  console.log(`${unique.length ? "FAILED" : "OK"}: ${unique.length} problem(s), ${rendered} lessons rendered, ${reviews} review lessons built.`);
+  process.exitCode = unique.length ? 1 : 0;
 }
 
-const unique = [...new Set(problems)];
-const shown = process.argv.includes("--all") ? unique.length : 80;
-for (const p of unique.slice(0, shown)) console.log(`✗ ${p}`);
-if (unique.length > shown) console.log(`… and ${unique.length - shown} more (--all to list every problem)`);
-console.log(`${unique.length ? "FAILED" : "OK"}: ${unique.length} problem(s), ${rendered} lessons rendered, ${reviews} review lessons built.`);
-process.exitCode = unique.length ? 1 : 0;
+main().catch((e) => {
+  console.error(e);
+  process.exitCode = 1;
+});

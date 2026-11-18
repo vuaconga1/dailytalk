@@ -7,12 +7,14 @@ import { Problem } from "@/lib/errors";
 import { prisma } from "@/server/db";
 import { isCurrentProfile, readLearnerName, readProfileInput } from "@/domain/profile";
 import type { LearnerProfile } from "@/domain/types";
+import { loadSessionPlan } from "@/server/auth";
 import { enqueueStudyReminder } from "@/server/jobs";
 
 /** Confirmed profile → classification → 30-day reference roadmap from the authored curriculum. */
 export const POST = authedRoute(async (req, user) => {
+  const existing = await loadSessionPlan(user.id);
   // Before paying, a trial learner may revise the profile; afterwards the roadmap is kept to preserve progress.
-  const editing = Boolean(user.plan && isCurrentProfile(user.profile));
+  const editing = Boolean(existing.plan && isCurrentProfile(existing.profile));
   if (editing && !isTrial(user)) {
     throw new Problem("Đã có lộ trình. Lộ trình hiện tại được giữ để bảo toàn tiến độ.", 409);
   }
@@ -21,13 +23,15 @@ export const POST = authedRoute(async (req, user) => {
   const input = readProfileInput(body);
   const classification = classify(input);
   const profile: LearnerProfile = { ...input, classification, working_level: classification.level };
-  const plan = buildPlan(profile);
+  const plan = await buildPlan(profile);
   const now = new Date();
+  // Auto-activate when QR payment is off: open email reminders (not legacy Zalo-only []).
   const activation =
     !PAYMENT_ENABLED && user.status === "LEAD" && !user.isDemo
       ? {
           status: "ACTIVE" as const,
-          packageName: `Gói ${DEFAULT_PACKAGE_DAYS} ngày`,
+          packageName: `Gói email ${DEFAULT_PACKAGE_DAYS} ngày`,
+          reminderChannels: ["email"] as string[],
           activatedAt: now,
           accessEndsAt: new Date(now.getTime() + DEFAULT_PACKAGE_DAYS * 86_400_000),
           lockAt: null,
@@ -36,7 +40,7 @@ export const POST = authedRoute(async (req, user) => {
   const data = { name, profile, plan, planSource: "curriculum", ...activation };
   if (editing) {
     await prisma.user.update({ where: { id: user.id }, data });
-  } else if (user.plan) {
+  } else if (existing.plan) {
     // Old-survey learner: their sessions used the retired lesson format, so the journey restarts.
     await prisma.$transaction([
       prisma.attempt.deleteMany({ where: { userId: user.id } }),
@@ -49,8 +53,6 @@ export const POST = authedRoute(async (req, user) => {
     });
     if (!count) throw new Problem("Lộ trình đã được tạo.", 409);
   }
-  if (profile.reminders) {
-    await enqueueStudyReminder(user.id).catch((error: unknown) => console.error("schedule reminder", error));
-  }
-  return json({ ok: true, classification, next: isTrial(user) ? "/payment" : "/onboarding/result" });
+  if (profile.reminders) await enqueueStudyReminder(user.id);
+  return json({ ok: true });
 });

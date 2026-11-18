@@ -1,7 +1,7 @@
 import "server-only";
 import { notFound, redirect } from "next/navigation";
 import { can, isStaff, type Permission } from "@/domain/access";
-import { getSessionUser, type SessionUser } from "@/server/auth";
+import { getSessionUser, loadSessionPlan, type SessionUser } from "@/server/auth";
 import { isCurrentProfile } from "@/domain/profile";
 import type { LearnerProfile, StudyPlan } from "@/domain/types";
 
@@ -24,6 +24,13 @@ export type PlannedUser = SessionUser & { profile: LearnerProfile; plan: StudyPl
 /** Learners without a (current-format) profile and plan are sent to onboarding first. */
 export async function requirePlan(): Promise<PlannedUser> {
   const user = await requireUser();
-  if (!user.plan || !isCurrentProfile(user.profile)) redirect("/onboarding");
-  return user as PlannedUser;
+  const data = await loadSessionPlan(user.id);
+  if (!data.plan || !isCurrentProfile(data.profile)) redirect("/onboarding");
+  return {
+    ...user,
+    hasPlan: true,
+    profile: data.profile,
+    plan: data.plan,
+    planSource: data.planSource,
+  };
 }

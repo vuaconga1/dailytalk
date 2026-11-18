@@ -1,4 +1,5 @@
-import type { GoalStatus, Lesson, Summary, WeekReview } from "@/domain/types";
+import type { LessonLean } from "@/domain/lesson-lean";
+import type { GoalStatus, Summary, WeekReview } from "@/domain/types";
 
 export const WEEK_DAYS = 7;
 const LAST_DAY = 30;
@@ -16,7 +17,7 @@ export function weekOf(day: number): {
 
 type Row = {
   day: number;
-  lesson: Lesson;
+  lesson: LessonLean;
   summary: Summary | null;
   completed: boolean;
 };

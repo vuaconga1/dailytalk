@@ -30,16 +30,18 @@ const base = {
 /** Each work audience alone picks every audience variant of a day; travel/recruiters add the module days. */
 const AUDIENCE_SETS = [...WORK_AUDIENCES.map((a) => [a]), [...WORK_AUDIENCES, "travel", "recruiters"]];
 
-function* curriculumLessons(): Generator<Lesson> {
+async function curriculumLessons(): Promise<Lesson[]> {
+  const out: Lesson[] = [];
   for (const { industry, position } of coverage()) {
     for (const audiences of AUDIENCE_SETS) {
       const profile = { ...base, industry, position, audiences } as unknown as LearnerProfile;
-      for (const day of buildPlan(profile).days) {
-        const lesson = day.ref ? renderLesson(day.ref, profile, "elementary") : null;
-        if (lesson) yield lesson;
+      for (const day of (await buildPlan(profile)).days) {
+        const lesson = day.ref ? await renderLesson(day.ref, profile, "elementary") : null;
+        if (lesson) out.push(lesson);
       }
     }
   }
+  return out;
 }
 
 /** Bank lessons plus every lesson already given to a learner (review days and seeded attempts are not in the bank). */
@@ -56,7 +58,9 @@ async function main() {
   const staff = await prisma.user.findFirst({ where: { role: "ADMIN" }, select: { id: true } });
   if (!staff) throw new Error("Chưa có tài khoản admin (npm run seed:admin).");
 
-  const lessons = process.argv.includes("--curriculum") ? [...curriculumLessons(), ...(await storedLessons())] : await storedLessons();
+  const lessons = process.argv.includes("--curriculum")
+    ? [...(await curriculumLessons()), ...(await storedLessons())]
+    : await storedLessons();
   const clips = new Map<string, string>();
   for (const lesson of lessons) for (const { key, text } of lessonClips(lesson)) if (text) clips.set(key, text);
   const have = new Set(

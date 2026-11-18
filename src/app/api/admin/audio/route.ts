@@ -16,5 +16,13 @@ export const POST = staffRoute("manageLessons", async (req, staff) => {
   for (const { key, text } of clips) {
     await cachedSpeech({ key, text: text!, userId: staff.id, kind: "shared_audio", shared: true, reserve: false });
   }
+  const stored = await prisma.audioClip.findMany({
+    where: { key: { in: clips.map((c) => c.key) } },
+    select: { key: true },
+  });
+  await prisma.lessonContent.update({
+    where: { key: row.key },
+    data: { audioTotal: clips.length, audioReady: stored.length },
+  });
   return json({ ok: true, clips: clips.length });
 });

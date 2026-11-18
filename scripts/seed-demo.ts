@@ -12,6 +12,7 @@ import { classify } from "../src/domain/classify";
 import { LESSONS } from "../src/domain/content";
 import { buildPlan } from "../src/domain/curriculum";
 import { framesUsed } from "../src/domain/frames";
+import { toLessonLean } from "../src/domain/lesson-lean";
 import type { ProfileInput } from "../src/domain/profile";
 import { prisma } from "../src/server/db";
 import { shiftDays, vnDate } from "../src/lib/time";
@@ -74,10 +75,7 @@ const SESSION_LESSONS: [lessonId: string, focus: string][] = [
   ["L11", "Tổng kết: tự tin thuyết trình 1 phút về công việc"],
 ];
 
-const PLAN: StudyPlan = {
-  goal: "Sau 30 buổi, Minh Anh chủ động giới thiệu bản thân và dịch vụ, đặt lịch họp, báo cáo tiến độ và yêu cầu tài liệu với đối tác quốc tế một cách lưu loát, lịch sự.",
-  days: buildPlan(PROFILE).days,
-};
+let PLAN: StudyPlan;
 const SIGNALS: LevelSignal[] = ["match", "match", "below", "match", "match", "match", "match", "match", "match", "match", "match", "match"];
 
 type Line = string | [text: string, mode: "voice" | "text"];
@@ -412,6 +410,8 @@ async function seed(email: string, password: string) {
         day: i + 1,
         localDate: dates[i],
         lesson,
+        lessonTitle: lesson.title,
+        lessonLean: toLessonLean(lesson),
         plannedTitle: planned,
         selectedBy: lesson.title === planned ? "plan" : "rule",
         focus: SESSION_LESSONS[i][1],
@@ -437,6 +437,10 @@ async function seed(email: string, password: string) {
 }
 
 async function main() {
+  PLAN = {
+    goal: "Sau 30 buổi, Minh Anh chủ động giới thiệu bản thân và dịch vụ, đặt lịch họp, báo cáo tiến độ và yêu cầu tài liệu với đối tác quốc tế một cách lưu loát, lịch sự.",
+    days: (await buildPlan(PROFILE)).days,
+  };
   const args = process.argv.slice(2);
   const flag = (name: string) => {
     const i = args.indexOf(`--${name}`);

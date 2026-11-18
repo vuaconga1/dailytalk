@@ -2,44 +2,74 @@ import { createHash } from "node:crypto";
 import { profileLabels } from "@/domain/profile";
 import { INDUSTRIES, OTHER, slugify, type LevelId } from "@/domain/profile-options";
 import type { LearnerProfile, Lesson, PlanDay, StudyPlan } from "@/domain/types";
-import { creative } from "@/data/curriculum/creative";
-import { education } from "@/data/curriculum/education";
-import { engineering } from "@/data/curriculum/engineering";
-import { finance_legal } from "@/data/curriculum/finance_legal";
-import { healthcare } from "@/data/curriculum/healthcare";
-import { hospitality } from "@/data/curriculum/hospitality";
-import { household } from "@/data/curriculum/household";
-import { logistics } from "@/data/curriculum/logistics";
-import { office } from "@/data/curriculum/office";
-import { operations } from "@/data/curriculum/operations";
-import { research } from "@/data/curriculum/research";
-import { sales } from "@/data/curriculum/sales";
-import { support } from "@/data/curriculum/support";
-import { tech } from "@/data/curriculum/tech";
 import { INDUSTRY_MEMBERS } from "./members";
 import { INTERVIEW_DAYS, TRAVEL_DAYS } from "./modules";
-import { WORK_AUDIENCES, type Audience, type Cluster, type ClusterId, type CurriculumDay, type Member } from "./types";
-
-export const CLUSTERS: Record<ClusterId, Cluster> = {
-  sales,
-  support,
-  office,
-  finance_legal,
-  creative,
-  tech,
-  engineering,
-  logistics,
-  hospitality,
-  healthcare,
-  education,
-  research,
-  operations,
-  household,
-};
+import {
+  WORK_AUDIENCES,
+  type Audience,
+  type Cluster,
+  type ClusterId,
+  type CurriculumDay,
+  type Member,
+} from "./types";
 
 /** Authored content targets short, simple sentences; other levels are adapted by AI when available. */
 export const CURRICULUM_LEVEL: LevelId = "elementary";
 const CURRICULUM_VERSION = 2;
+
+/** Labels without loading 30-day blobs — used by bank metadata. */
+export const CLUSTER_LABELS: Record<ClusterId, string> = {
+  sales: "Tư vấn & bán hàng",
+  support: "Chăm sóc & hỗ trợ khách hàng",
+  office: "Văn phòng – hành chính – nhân sự",
+  finance_legal: "Tài chính – kế toán – pháp lý",
+  creative: "Marketing – sáng tạo",
+  tech: "Công nghệ",
+  engineering: "Kỹ thuật – sản xuất – công trường",
+  logistics: "Logistics – xuất nhập khẩu – mua hàng",
+  hospitality: "Dịch vụ khách: du lịch, nhà hàng, làm đẹp",
+  healthcare: "Y tế – chăm sóc sức khỏe",
+  education: "Giáo dục – huấn luyện",
+  research: "Nghiên cứu – khoa học",
+  operations: "Vận hành – an ninh – khẩn cấp",
+  household: "Dịch vụ gia đình",
+};
+
+const CLUSTER_LOADERS: Record<ClusterId, () => Promise<Cluster>> = {
+  sales: () => import("@/data/curriculum/sales").then((m) => m.sales),
+  support: () => import("@/data/curriculum/support").then((m) => m.support),
+  office: () => import("@/data/curriculum/office").then((m) => m.office),
+  finance_legal: () => import("@/data/curriculum/finance_legal").then((m) => m.finance_legal),
+  creative: () => import("@/data/curriculum/creative").then((m) => m.creative),
+  tech: () => import("@/data/curriculum/tech").then((m) => m.tech),
+  engineering: () => import("@/data/curriculum/engineering").then((m) => m.engineering),
+  logistics: () => import("@/data/curriculum/logistics").then((m) => m.logistics),
+  hospitality: () => import("@/data/curriculum/hospitality").then((m) => m.hospitality),
+  healthcare: () => import("@/data/curriculum/healthcare").then((m) => m.healthcare),
+  education: () => import("@/data/curriculum/education").then((m) => m.education),
+  research: () => import("@/data/curriculum/research").then((m) => m.research),
+  operations: () => import("@/data/curriculum/operations").then((m) => m.operations),
+  household: () => import("@/data/curriculum/household").then((m) => m.household),
+};
+
+const clusterCache = new Map<ClusterId, Promise<Cluster>>();
+
+/** Loads one job-cluster curriculum module (cached). Avoids pulling all 14 files on every soft-nav. */
+export function loadCluster(id: ClusterId): Promise<Cluster> {
+  let hit = clusterCache.get(id);
+  if (!hit) {
+    hit = CLUSTER_LOADERS[id]();
+    clusterCache.set(id, hit);
+  }
+  return hit;
+}
+
+/** All clusters — for validation scripts / audio gen, not learner hot paths. */
+export async function loadAllClusters(): Promise<Record<ClusterId, Cluster>> {
+  const ids = Object.keys(CLUSTER_LOADERS) as ClusterId[];
+  const entries = await Promise.all(ids.map(async (id) => [id, await loadCluster(id)] as const));
+  return Object.fromEntries(entries) as Record<ClusterId, Cluster>;
+}
 
 const MODULES: Record<string, CurriculumDay[]> = {
   travel: TRAVEL_DAYS,
@@ -83,10 +113,10 @@ type Context = {
   audiences: Audience[];
 };
 
-function contextOf(profile: LearnerProfile): Context {
+async function contextOf(profile: LearnerProfile): Promise<Context> {
   const member = memberFor(profile);
   return {
-    cluster: CLUSTERS[member.cluster],
+    cluster: await loadCluster(member.cluster),
     member,
     jobVi: lowerFirst(profileLabels(profile).position),
     audiences: WORK_AUDIENCES.filter((a) => profile.audiences.includes(a)),
@@ -149,8 +179,8 @@ function resolveRef(ref: string, ctx: Context): DayRef | null {
 }
 
 /** 30-day reference roadmap for the learner's cluster, audiences and goals. */
-export function buildPlan(profile: LearnerProfile): StudyPlan {
-  const ctx = contextOf(profile);
+export async function buildPlan(profile: LearnerProfile): Promise<StudyPlan> {
+  const ctx = await contextOf(profile);
   const refs: string[] = ctx.cluster.days.map((d, i) => `${ctx.cluster.id}:${i}:${pickAudience(d, ctx.audiences) ?? ""}`);
   if (profile.audiences.includes("travel")) TRAVEL_SLOTS.forEach((day, i) => (refs[day - 1] = `travel:${i}:`));
   if (profile.audiences.includes("recruiters")) INTERVIEW_SLOTS.forEach((day, i) => (refs[day - 1] = `interview:${i}:`));
@@ -174,8 +204,8 @@ export function buildPlan(profile: LearnerProfile): StudyPlan {
 }
 
 /** Full lesson for a roadmap entry, filled for this learner. Null when the ref is unknown. */
-export function renderLesson(ref: string, profile: LearnerProfile, level: LevelId): Lesson | null {
-  const ctx = contextOf(profile);
+export async function renderLesson(ref: string, profile: LearnerProfile, level: LevelId): Promise<Lesson | null> {
+  const ctx = await contextOf(profile);
   const r = resolveRef(ref, ctx);
   if (!r) return null;
   const vars = varsFor(ctx, r.audience);
@@ -216,12 +246,12 @@ export function renderLesson(ref: string, profile: LearnerProfile, level: LevelI
 }
 
 /** Labels stored with bank entries: the cluster and the English job title. */
-export function curriculumMeta(profile: LearnerProfile): {
+export async function curriculumMeta(profile: LearnerProfile): Promise<{
   cluster: string;
   job: string;
-} {
+}> {
   const member = memberFor(profile);
-  return { cluster: CLUSTERS[member.cluster].label, job: member.job };
+  return { cluster: CLUSTER_LABELS[member.cluster], job: member.job };
 }
 
 /** Every (industry, position) the form offers, with the cluster it learns with. */

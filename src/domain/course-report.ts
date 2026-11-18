@@ -1,7 +1,8 @@
 import { LAST_STUDY_DAY } from "@/domain/access";
+import type { LessonLean } from "@/domain/lesson-lean";
 import { WEEK_DAYS } from "@/domain/week";
 import { shiftDays } from "@/lib/time";
-import type { Lesson, LevelId, StudyPlan, Summary } from "@/domain/types";
+import type { LevelId, StudyPlan, Summary } from "@/domain/types";
 
 export type CourseReport = {
   /** Study days in the learner's course. */
@@ -40,7 +41,7 @@ export type CourseReport = {
 type Row = {
   day: number;
   localDate: string;
-  lesson: Lesson;
+  lesson: LessonLean;
   summary: Summary | null;
   completed: boolean;
 };
