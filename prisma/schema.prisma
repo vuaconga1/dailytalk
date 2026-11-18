@@ -35,6 +35,8 @@ model User {
   role          Role          @default(LEARNER)
   status        AccountStatus @default(ACTIVE)
   phone         String?
+  /// Optional override for study-reminder email; null = use login `email`.
+  reminderEmail String?
   /// Throwaway "Trải nghiệm demo" learner; email is <id>@demo.invalid.
   isDemo        Boolean       @default(false)
   /// LearnerProfile (see src/domain/types.ts)

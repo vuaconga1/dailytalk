@@ -5,6 +5,7 @@ import { buildPlan } from "@/domain/curriculum";
 import { Prisma } from "@/generated/prisma/client";
 import { Problem } from "@/lib/errors";
 import { prisma } from "@/server/db";
+import { readReminderEmail, readRequiredPhone } from "@/domain/contact";
 import { isCurrentProfile, readLearnerName, readProfileInput } from "@/domain/profile";
 import type { LearnerProfile } from "@/domain/types";
 import { loadSessionPlan } from "@/server/auth";
@@ -20,6 +21,8 @@ export const POST = authedRoute(async (req, user) => {
   }
   const body = await readJson(req);
   const name = readLearnerName(body);
+  const phone = readRequiredPhone(body);
+  const reminderEmail = user.isDemo ? null : readReminderEmail(body, user.email);
   const input = readProfileInput(body);
   const classification = classify(input);
   const profile: LearnerProfile = { ...input, classification, working_level: classification.level };
@@ -37,7 +40,7 @@ export const POST = authedRoute(async (req, user) => {
           lockAt: null,
         }
       : {};
-  const data = { name, profile, plan, planSource: "curriculum", ...activation };
+  const data = { name, phone, reminderEmail, profile, plan, planSource: "curriculum", ...activation };
   if (editing) {
     await prisma.user.update({ where: { id: user.id }, data });
   } else if (existing.plan) {

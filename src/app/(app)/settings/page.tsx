@@ -7,8 +7,15 @@ import { oaFollowUrl, zaloConfigured } from "@/server/integrations/zalo";
 
 export default async function SettingsPage() {
   const user = await requirePlan();
-  const link = user.isDemo ? null : await prisma.zaloLink.findUnique({ where: { userId: user.id } });
+  const [link, contact] = await Promise.all([
+    user.isDemo ? Promise.resolve(null) : prisma.zaloLink.findUnique({ where: { userId: user.id } }),
+    prisma.user.findUnique({
+      where: { id: user.id },
+      select: { phone: true, reminderEmail: true },
+    }),
+  ]);
   const eligible = zaloReminderEligible(user.reminderChannels);
+  const loginEmail = user.isDemo ? "Tài khoản demo" : user.email;
 
   return (
     <section className="animate-fade-in mx-auto w-full max-w-[850px] pb-12">
@@ -26,7 +33,9 @@ export default async function SettingsPage() {
       <div className="space-y-6">
         <SettingsForm
           name={user.name}
-          email={user.isDemo ? "Tài khoản demo" : user.email}
+          email={loginEmail}
+          phone={contact?.phone ?? ""}
+          reminderEmail={contact?.reminderEmail || (user.isDemo ? "" : user.email)}
           studyTime={user.profile.study_time}
           reminders={user.profile.reminders}
         />

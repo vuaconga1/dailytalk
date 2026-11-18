@@ -1,4 +1,5 @@
 import "server-only";
+import { reminderDestination } from "@/domain/contact";
 import { prisma } from "@/server/db";
 import { reminderEmailHtml, sendEmail } from "@/server/integrations/email";
 import { messagingWindowHours, sendText } from "@/server/integrations/zalo";
@@ -96,7 +97,7 @@ async function deliver(
 ): Promise<NotifyOutcome> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { email: true, reminderChannels: true, isDemo: true },
+    select: { email: true, reminderEmail: true, reminderChannels: true, isDemo: true },
   });
 
   const channels = user?.reminderChannels ?? [];
@@ -111,7 +112,8 @@ async function deliver(
 
   const results: ChannelResult[] = [];
   if (wantEmail && user && !user.isDemo) {
-    results.push(await deliverEmail(user.email, kind, text, options));
+    const to = reminderDestination(user.email, user.reminderEmail);
+    results.push(await deliverEmail(to, kind, text, options));
   } else if (wantEmail) {
     results.push({ channel: "email", outcome: "skipped", detail: "Tài khoản demo" });
   }

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 import { api, errorMessage } from "@/client/api";
+import { EMAIL_MAX, PHONE_MAX } from "@/domain/contact";
 import { isLightPace } from "@/domain/pace";
 import { MAX_AGE, MIN_AGE, NAME_MAX } from "@/domain/profile";
 import { AUDIENCES, DURATIONS, FREQUENCIES, GENDERS, GOALS, INDUSTRIES, labelOf, LEVELS, OTHER, type Option } from "@/domain/profile-options";
@@ -11,6 +12,7 @@ export type OnboardingValues = Form;
 
 type Form = {
   name: string;
+  phone: string;
   age: string;
   gender: string;
   industry: string;
@@ -24,10 +26,12 @@ type Form = {
   duration_months: string;
   study_time: string;
   reminders: boolean;
+  reminder_email: string;
 };
 
 const EMPTY: Form = {
   name: "",
+  phone: "",
   age: "",
   gender: "",
   industry: "",
@@ -41,6 +45,7 @@ const EMPTY: Form = {
   duration_months: "",
   study_time: "20:30",
   reminders: true,
+  reminder_email: "",
 };
 
 function Chips({ options, value, onChange }: { options: Option[]; value: string[]; onChange: (v: string[]) => void }) {
@@ -93,12 +98,28 @@ type Props = {
   /** A trial learner revising a saved profile before paying. */
   editing?: boolean;
   defaultName?: string;
+  /** Login email; pre-fills reminder destination until the learner changes it. */
+  defaultEmail?: string;
+  defaultPhone?: string;
   initial?: Partial<Form>;
 };
 
-export function OnboardingForm({ restart = false, editing = false, defaultName = "", initial }: Props) {
+export function OnboardingForm({
+  restart = false,
+  editing = false,
+  defaultName = "",
+  defaultEmail = "",
+  defaultPhone = "",
+  initial,
+}: Props) {
   const router = useRouter();
-  const [form, setForm] = useState<Form>({ ...EMPTY, name: defaultName, ...initial });
+  const [form, setForm] = useState<Form>({
+    ...EMPTY,
+    name: defaultName,
+    phone: defaultPhone,
+    reminder_email: defaultEmail,
+    ...initial,
+  });
   const [step, setStep] = useState<"form" | "confirm">("form");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -133,6 +154,7 @@ export function OnboardingForm({ restart = false, editing = false, defaultName =
   if (step === "confirm") {
     const rows: [string, string][] = [
       ["Họ và tên", form.name.trim()],
+      ["Số điện thoại", form.phone.trim()],
       ["Tuổi", form.age],
       ["Giới tính", labelOf(GENDERS, form.gender) ?? ""],
       ["Công việc", industryLabel ?? ""],
@@ -143,6 +165,9 @@ export function OnboardingForm({ restart = false, editing = false, defaultName =
       ["Tần suất dùng tiếng Anh", labelOf(FREQUENCIES, form.frequency) ?? ""],
       ["Thời gian học mong muốn", labelOf(DURATIONS, form.duration_months) ?? ""],
       ["Giờ học", `${form.study_time} · ${form.reminders ? "có nhắc học" : "không nhắc"}`],
+      ...(form.reminders
+        ? ([["Email nhận nhắc", form.reminder_email.trim() || defaultEmail || "—"]] as [string, string][])
+        : []),
     ];
     return (
       <div className="card">
@@ -193,6 +218,20 @@ export function OnboardingForm({ restart = false, editing = false, defaultName =
             value={form.name}
             onChange={(e) => set("name", e.target.value)}
             placeholder="Ví dụ: Nguyễn Văn An"
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="phone">Số điện thoại</label>
+          <input
+            id="phone"
+            type="tel"
+            required
+            maxLength={PHONE_MAX}
+            autoComplete="tel"
+            inputMode="tel"
+            value={form.phone}
+            onChange={(e) => set("phone", e.target.value)}
+            placeholder="Ví dụ: 0901234567"
           />
         </div>
         <div className="field">
@@ -317,6 +356,21 @@ export function OnboardingForm({ restart = false, editing = false, defaultName =
         <input type="checkbox" checked={form.reminders} onChange={(e) => set("reminders", e.target.checked)} />
         Nhắc tôi trước giờ học mỗi ngày.
       </label>
+      {form.reminders && (
+        <div className="field mt-3">
+          <label htmlFor="reminder_email">Email nhận nhắc học</label>
+          <input
+            id="reminder_email"
+            type="email"
+            maxLength={EMAIL_MAX}
+            autoComplete="email"
+            value={form.reminder_email}
+            onChange={(e) => set("reminder_email", e.target.value)}
+            placeholder={defaultEmail || "you@example.com"}
+          />
+          <p className="note mt-2">Mặc định là email đăng nhập. Chỉ đổi nếu bạn muốn nhận nhắc ở địa chỉ khác.</p>
+        </div>
+      )}
       <label className="check mt-3">
         <input type="checkbox" required defaultChecked={editing} />
         Tôi đồng ý để WeWIN lưu hồ sơ và kết quả học tập nhằm cá nhân hóa lộ trình của tôi.
