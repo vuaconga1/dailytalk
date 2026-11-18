@@ -39,7 +39,7 @@ export function WordsStep({ lesson, audio, media, onNext, onError }: Props) {
   const playButton = (label: string, onClick: () => void) => (
     <button
       type="button"
-      className="grid size-9 shrink-0 place-items-center rounded-full border-[1.5px] border-black bg-white text-xs text-navy transition hover:bg-gold-soft"
+      className="grid size-9 shrink-0 place-items-center rounded-full border-[1.5px] border-black bg-white text-xs text-navy transition hover:bg-navy-soft"
       aria-label={label}
       onClick={onClick}
     >
@@ -47,38 +47,62 @@ export function WordsStep({ lesson, audio, media, onNext, onError }: Props) {
     </button>
   );
 
-  const wordCard = (v: Word, compact = false) => (
-    <article
-      key={`${v.day ?? ""}-${v.word}`}
-      className={`flex min-w-0 flex-col rounded-xl border-[1.5px] border-black border-t-4 border-t-gold bg-white ${compact ? "p-4" : "p-5"}`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h3 className={`${compact ? "text-lg" : "text-xl"} font-extrabold leading-tight text-navy`}>{v.word}</h3>
-          {(v.ipa || v.pos) && (
-            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-              {v.ipa && <span className="font-mono">/{v.ipa}/</span>}
-              {v.pos && (
-                <span className="rounded bg-navy-soft px-1.5 py-0.5 font-semibold text-navy" title={PARTS_OF_SPEECH[v.pos]}>
-                  {v.pos === "phrv" ? "phr. v" : v.pos}.
-                </span>
-              )}
-            </p>
-          )}
+  const wordCard = (v: Word, index: number, compact = false) => {
+    const posLabel = v.pos ? (v.pos === "phrv" ? "phr. v" : `${v.pos}.`) : null;
+    return (
+      <article
+        key={`${v.day ?? ""}-${v.word}`}
+        className="flex min-w-0 flex-col overflow-hidden rounded-xl border-[1.5px] border-black bg-white"
+      >
+        <div className={`flex items-start gap-3 border-b-[1.5px] border-black bg-navy-soft/60 ${compact ? "p-3.5" : "p-4"}`}>
+          <span
+            className={`grid shrink-0 place-items-center rounded-full bg-navy font-bold text-white ${
+              compact ? "size-7 text-xs" : "size-8 text-sm"
+            }`}
+          >
+            {index + 1}
+          </span>
+          <div className="min-w-0 flex-1">
+            <h3 className={`${compact ? "text-base" : "text-lg md:text-xl"} font-extrabold leading-snug text-navy`}>{v.word}</h3>
+            <p className={`mt-1 font-medium text-ink-secondary ${compact ? "text-xs" : "text-sm"}`}>{v.meaning}</p>
+          </div>
+          {playButton(`Nghe phát âm ${v.word}`, () => sayWord(v))}
         </div>
-        {playButton(`Nghe phát âm ${v.word}`, () => sayWord(v))}
-      </div>
-      <p className="mt-3 text-base font-semibold text-ink">{v.meaning}</p>
-      {!compact && v.example && (
-        <p className="mt-3 border-t-[1.5px] border-black pt-3 text-[13px] leading-relaxed text-muted italic">“{v.example}”</p>
-      )}
-    </article>
-  );
+        {(v.ipa || v.pos || (!compact && v.example)) && (
+          <dl className={`grid flex-1 gap-4 text-sm ${compact ? "p-3.5" : "p-4"}`}>
+            {(v.ipa || v.pos) && (
+              <div>
+                <dt className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-black">Phát âm</dt>
+                <dd>
+                  <code className="flex flex-wrap items-center gap-2 rounded-md bg-navy px-3 py-2 text-[13px] font-semibold leading-relaxed text-white">
+                    {v.ipa && <span className="font-mono tracking-wide">/{v.ipa}/</span>}
+                    {posLabel && (
+                      <span className="rounded bg-white/15 px-1.5 py-0.5 text-[11px] font-bold" title={v.pos ? PARTS_OF_SPEECH[v.pos] : undefined}>
+                        {posLabel}
+                      </span>
+                    )}
+                  </code>
+                </dd>
+              </div>
+            )}
+            {!compact && v.example && (
+              <div className="border-t-[1.5px] border-black pt-3">
+                <dt className="mb-1 text-[11px] font-bold uppercase tracking-wider text-black">Ví dụ trong bài</dt>
+                <dd className="rounded-lg border-l-4 border-navy bg-navy-soft/50 px-3 py-2 font-medium italic text-ink">
+                  “{v.example}”
+                </dd>
+              </div>
+            )}
+          </dl>
+        )}
+      </article>
+    );
+  };
 
   return (
     <>
       <div className="mb-8 rounded-xl border-[1.5px] border-black bg-navy-soft/60 px-4 py-3 text-sm leading-relaxed text-ink">
-        <span className="mr-1.5 inline-block rounded bg-gold px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">Tình huống</span>
+        <span className="mr-1.5 inline-block rounded bg-navy px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">Tình huống</span>
         <span className="font-medium">{lesson.situation}</span>
       </div>
 
@@ -87,12 +111,12 @@ export function WordsStep({ lesson, audio, media, onNext, onError }: Props) {
         index={1}
         title={recap ? `Ôn tập ${range}` : "Từ vựng hôm nay"}
         badge={
-          <span className="badge badge-gold">
+          <span className="badge">
             {recap ? "KHÔNG CÓ TỪ MỚI" : `${lesson.vocabulary.length} TỪ`}
           </span>
         }
       >
-        Nghe và đọc to từng từ. Nghĩa tiếng Việt in đậm, câu ví dụ ở dưới.
+        Bấm ▶ để nghe, đọc to theo. Nghĩa tiếng Việt nằm ngay dưới từ; phát âm và ví dụ ở phần dưới.
       </SectionHeading>
 
       {recap ? (
@@ -108,24 +132,28 @@ export function WordsStep({ lesson, audio, media, onNext, onError }: Props) {
               return (
                 <section key={d.day}>
                   <h3 className="mb-2.5 flex flex-wrap items-center gap-2 text-sm font-bold text-navy">
-                    <span className="rounded-md bg-navy px-2 py-0.5 text-[11px] tracking-wider text-gold-light">NGÀY {d.day}</span>
+                    <span className="rounded-md bg-navy px-2 py-0.5 text-[11px] tracking-wider text-white">NGÀY {d.day}</span>
                     <span className="min-w-0">{d.title}</span>
                   </h3>
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">{words.map((v) => wordCard(v, true))}</div>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {words.map((v, i) => wordCard(v, i, true))}
+                  </div>
                 </section>
               );
             })}
           </div>
         </>
       ) : (
-        <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">{lesson.vocabulary.map((v) => wordCard(v))}</div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {lesson.vocabulary.map((v, i) => wordCard(v, i))}
+        </div>
       )}
 
       <SectionHeading
         className="mt-12"
         index={2}
         title={`Mẫu câu ${recap ? "ôn tập" : "trọng tâm"}`}
-        badge={<span className="badge badge-gold">{lesson.frames.length} MẪU CÂU</span>}
+        badge={<span className="badge">{lesson.frames.length} MẪU CÂU</span>}
       >
         Thay phần <b className="text-navy">“…”</b> bằng thông tin công việc của bạn. Bạn sẽ dùng lại các mẫu câu này khi shadowing và hội thoại với AI.
       </SectionHeading>
@@ -137,11 +165,11 @@ export function WordsStep({ lesson, audio, media, onNext, onError }: Props) {
           return (
             <article key={f} className="flex min-w-0 flex-col overflow-hidden rounded-xl border-[1.5px] border-black bg-white">
               <div className="flex items-start gap-3 border-b-[1.5px] border-black bg-navy-soft/60 p-4">
-                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-navy text-sm font-bold text-gold-light">{i + 1}</span>
+                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-navy text-sm font-bold text-white">{i + 1}</span>
                 <div className="min-w-0 flex-1">
                   <b className="block text-lg font-extrabold leading-snug text-navy md:text-xl">{f}</b>
                   {note && <p className="mt-1 text-sm font-medium text-ink-secondary">{note.meaning}</p>}
-                  {day && <p className="mt-1 text-xs font-semibold text-gold">Đã học ngày {day}</p>}
+                  {day && <p className="mt-1 text-xs font-semibold text-navy">Đã học ngày {day}</p>}
                 </div>
                 {playButton(`Nghe mẫu câu ${i + 1}`, () => sayFrame(f, example))}
               </div>
@@ -164,7 +192,7 @@ export function WordsStep({ lesson, audio, media, onNext, onError }: Props) {
                   {example && (
                     <div className="border-t-[1.5px] border-black pt-3">
                       <dt className="mb-1 text-[11px] font-bold uppercase tracking-wider text-black">Ví dụ trong bài</dt>
-                      <dd className="rounded-lg border-l-4 border-gold bg-gold-soft/50 px-3 py-2 font-medium italic text-ink">“{example}”</dd>
+                      <dd className="rounded-lg border-l-4 border-navy bg-navy-soft/50 px-3 py-2 font-medium italic text-ink">“{example}”</dd>
                     </div>
                   )}
                 </dl>
