@@ -7,6 +7,7 @@ import { Problem } from "@/lib/errors";
 import { prisma } from "@/server/db";
 import { isCurrentProfile, readLearnerName, readProfileInput } from "@/domain/profile";
 import type { LearnerProfile } from "@/domain/types";
+import { enqueueStudyReminder } from "@/server/jobs";
 
 /** Confirmed profile → classification → 30-day reference roadmap from the authored curriculum. */
 export const POST = authedRoute(async (req, user) => {
@@ -47,6 +48,9 @@ export const POST = authedRoute(async (req, user) => {
       data,
     });
     if (!count) throw new Problem("Lộ trình đã được tạo.", 409);
+  }
+  if (profile.reminders) {
+    await enqueueStudyReminder(user.id).catch((error: unknown) => console.error("schedule reminder", error));
   }
   return json({ ok: true, classification, next: isTrial(user) ? "/payment" : "/onboarding/result" });
 });

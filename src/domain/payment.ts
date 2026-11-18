@@ -1,4 +1,4 @@
-/** Reminder channels unlocked by a paid package. Email delivery ships later; channel rights are stored now. */
+/** Reminder channels unlocked by a paid package (email via Resend and/or Zalo OA). */
 export type ReminderChannel = "email" | "zalo";
 
 export type PlanId = "email" | "full";

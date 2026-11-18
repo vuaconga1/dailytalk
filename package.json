@@ -23,6 +23,7 @@
     "@neondatabase/serverless": "^1.2.0",
     "@prisma/adapter-neon": "^7.10.1",
     "@prisma/client": "^7.10.1",
+    "@upstash/qstash": "^2.12.2",
     "bcryptjs": "^3.0.3",
     "cmu-pronouncing-dictionary": "^3.0.0",
     "dotenv": "^17.4.2",

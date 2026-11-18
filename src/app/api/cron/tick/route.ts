@@ -2,15 +2,22 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
 import { json, route } from "@/server/http/api";
 import { Problem } from "@/lib/errors";
-import { buildWeeklyReports, expireAccounts, lastWeekStart, runStudyJobs } from "@/server/jobs";
+import {
+  buildWeeklyReports,
+  ensureStudySchedules,
+  expireAccounts,
+  lastWeekStart,
+  runStudyJobs,
+} from "@/server/jobs";
 import { weekStartOf } from "@/lib/time";
 import { purgeExpiredRecordings } from "@/server/shadowing/store";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const JOBS = ["expire", "study", "weekly", "recordings"] as const;
-type Job = (typeof JOBS)[number];
+/** Default daily jobs — study reminders are per-learner via QStash, not a tight poll. */
+const JOBS = ["expire", "weekly", "recordings", "ensure"] as const;
+type Job = (typeof JOBS)[number] | "study";
 
 function digest(value: string) {
   return createHash("sha256").update(value).digest();
@@ -25,21 +32,22 @@ function authorize(req: NextRequest) {
 }
 
 /**
- * Call every 5–10 minutes from an external scheduler. Every job is idempotent:
- * reminders are deduplicated per learner/day and weekly reports per learner/week.
- * `?jobs=study,weekly` runs a subset; `?week=YYYY-MM-DD` rebuilds a given week (Monday).
+ * Call once daily from an external scheduler (or Vercel Cron).
+ * `ensure` re-queues QStash reminders for eligible learners (deduped).
+ * `?jobs=study` remains available as a manual fallback sweep.
  */
 async function handler(req: NextRequest) {
   authorize(req);
   const params = req.nextUrl.searchParams;
   const requested = params.get("jobs")?.split(",").map((j) => j.trim()) ?? [...JOBS];
-  const jobs = requested.filter((j): j is Job => (JOBS as readonly string[]).includes(j));
+  const jobs = requested.filter((j): j is Job => j === "study" || (JOBS as readonly string[]).includes(j));
   const week = params.get("week");
   if (week && !/^\d{4}-\d{2}-\d{2}$/.test(week)) throw new Problem("week phải có dạng YYYY-MM-DD.");
 
   const started = Date.now();
   const out: Record<string, unknown> = {};
   if (jobs.includes("expire")) out.expired = await expireAccounts();
+  if (jobs.includes("ensure")) out.ensure = await ensureStudySchedules();
   if (jobs.includes("study")) out.study = await runStudyJobs();
   if (jobs.includes("weekly")) {
     const weekStart = week ? weekStartOf(week) : lastWeekStart();

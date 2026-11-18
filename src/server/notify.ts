@@ -1,22 +1,38 @@
 import "server-only";
 import { prisma } from "@/server/db";
+import { reminderEmailHtml, sendEmail } from "@/server/integrations/email";
 import { messagingWindowHours, sendText } from "@/server/integrations/zalo";
 
 export type NotifyOutcome = "sent" | "skipped" | "failed" | "duplicate";
 
+export type NotifyOptions = {
+  /** Subject for email channel; defaults from kind. */
+  emailSubject?: string;
+  /** Body for email when it should differ from Zalo (e.g. no "reply OK"). */
+  emailText?: string;
+  /** CTA link embedded in the HTML email. */
+  emailCtaUrl?: string;
+};
+
 /**
  * Queues one message per (user, kind, localDate) and delivers it right away.
  * Re-running a job never sends the same reminder twice.
- * Zalo is only sent when the learner's paid plan includes the "zalo" channel.
- * Email channel rights are stored but not delivered yet.
+ * Delivers to each channel unlocked on the learner's paid plan (email and/or Zalo).
+ * Empty reminderChannels = legacy accounts keep Zalo-only behavior.
  */
-export async function notify(userId: string, kind: string, localDate: string, text: string): Promise<NotifyOutcome> {
+export async function notify(
+  userId: string,
+  kind: string,
+  localDate: string,
+  text: string,
+  options: NotifyOptions = {},
+): Promise<NotifyOutcome> {
   const { count } = await prisma.notification.createMany({
     data: [{ userId, kind, localDate, text }],
     skipDuplicates: true,
   });
   if (!count) return "duplicate";
-  return deliver(userId, kind, localDate, text);
+  return deliver(userId, kind, localDate, text, options);
 }
 
 async function finish(userId: string, kind: string, localDate: string, data: object) {
@@ -26,36 +42,94 @@ async function finish(userId: string, kind: string, localDate: string, data: obj
   });
 }
 
-async function deliver(userId: string, kind: string, localDate: string, text: string): Promise<NotifyOutcome> {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { reminderChannels: true } });
-  const skip = async (reason: string) => {
-    await finish(userId, kind, localDate, { status: "SKIPPED", reason });
-    return "skipped" as const;
-  };
-  // Empty channels = legacy / admin-activated accounts keep prior Zalo behavior.
-  // Paid "email" plan stores ["email"] and must not send Zalo.
-  const channels = user?.reminderChannels ?? [];
-  if (channels.length > 0 && !channels.includes("zalo")) {
-    return skip(channels.includes("email") ? "Gói chỉ nhắc email (chưa gửi email)" : "Gói chưa mở nhắc Zalo");
-  }
+function defaultEmailSubject(kind: string): string {
+  if (kind === "study_reminder") return "Đến giờ học WeWIN Daily Speaking";
+  if (kind === "activated") return "Lộ trình Daily Speaking đã được kích hoạt";
+  return "Thông báo từ WeWIN Daily Speaking";
+}
+
+type ChannelResult = { channel: string; outcome: "sent" | "skipped" | "failed"; detail: string };
+
+async function deliverEmail(
+  to: string,
+  kind: string,
+  text: string,
+  options: NotifyOptions,
+): Promise<ChannelResult> {
+  const subject = options.emailSubject ?? defaultEmailSubject(kind);
+  const body = options.emailText ?? text;
+  const html = reminderEmailHtml(body, options.emailCtaUrl);
+  const result = await sendEmail({ to, subject, text: body, html });
+  if (result.ok) return { channel: "email", outcome: "sent", detail: result.id };
+  if (result.dryRun) return { channel: "email", outcome: "skipped", detail: result.reason };
+  return { channel: "email", outcome: "failed", detail: result.reason };
+}
+
+async function deliverZalo(userId: string, text: string): Promise<ChannelResult> {
   const link = await prisma.zaloLink.findUnique({ where: { userId } });
-  if (!link) return skip("Học viên chưa liên kết Zalo OA");
-  if (!link.followed) return skip("Học viên đã bỏ quan tâm OA");
+  if (!link) return { channel: "zalo_oa", outcome: "skipped", detail: "Học viên chưa liên kết Zalo OA" };
+  if (!link.followed) return { channel: "zalo_oa", outcome: "skipped", detail: "Học viên đã bỏ quan tâm OA" };
   const windowStart = Date.now() - messagingWindowHours() * 3_600_000;
   if (!link.lastInteractionAt || link.lastInteractionAt.getTime() < windowStart) {
-    return skip(`Quá ${messagingWindowHours()} giờ kể từ lần tương tác cuối – cần học viên nhắn OA`);
+    return {
+      channel: "zalo_oa",
+      outcome: "skipped",
+      detail: `Quá ${messagingWindowHours()} giờ kể từ lần tương tác cuối – cần học viên nhắn OA`,
+    };
   }
   try {
     const result = await sendText(link.zaloUserId, text);
-    if (result.ok) {
-      await finish(userId, kind, localDate, { status: "SENT", sentAt: new Date(), reason: null });
-      return "sent";
-    }
-    if (result.dryRun) return skip(result.reason);
-    await finish(userId, kind, localDate, { status: "FAILED", reason: result.reason });
-    return "failed";
+    if (result.ok) return { channel: "zalo_oa", outcome: "sent", detail: "ok" };
+    if (result.dryRun) return { channel: "zalo_oa", outcome: "skipped", detail: result.reason };
+    return { channel: "zalo_oa", outcome: "failed", detail: result.reason };
   } catch (error) {
-    await finish(userId, kind, localDate, { status: "FAILED", reason: String(error).slice(0, 300) });
+    return { channel: "zalo_oa", outcome: "failed", detail: String(error).slice(0, 300) };
+  }
+}
+
+async function deliver(
+  userId: string,
+  kind: string,
+  localDate: string,
+  text: string,
+  options: NotifyOptions,
+): Promise<NotifyOutcome> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true, reminderChannels: true, isDemo: true },
+  });
+
+  const channels = user?.reminderChannels ?? [];
+  // Empty = legacy / admin-activated accounts keep prior Zalo-only behavior.
+  const wantZalo = channels.length === 0 || channels.includes("zalo");
+  const wantEmail = channels.includes("email");
+
+  if (!wantZalo && !wantEmail) {
+    await finish(userId, kind, localDate, { status: "SKIPPED", reason: "Gói chưa mở kênh nhắc", channel: "none" });
+    return "skipped";
+  }
+
+  const results: ChannelResult[] = [];
+  if (wantEmail && user && !user.isDemo) {
+    results.push(await deliverEmail(user.email, kind, text, options));
+  } else if (wantEmail) {
+    results.push({ channel: "email", outcome: "skipped", detail: "Tài khoản demo" });
+  }
+  if (wantZalo) results.push(await deliverZalo(userId, text));
+
+  const sent = results.filter((r) => r.outcome === "sent");
+  const failed = results.filter((r) => r.outcome === "failed");
+  const channelLabel = results.map((r) => r.channel).join("+") || "none";
+  const reason = results.map((r) => `${r.channel}: ${r.outcome}${r.detail ? ` (${r.detail})` : ""}`).join(" · ").slice(0, 500);
+
+  if (sent.length > 0) {
+    await finish(userId, kind, localDate, { status: "SENT", sentAt: new Date(), reason, channel: channelLabel });
+    return "sent";
+  }
+  if (failed.length > 0) {
+    await finish(userId, kind, localDate, { status: "FAILED", reason, channel: channelLabel });
     return "failed";
   }
+  await finish(userId, kind, localDate, { status: "SKIPPED", reason, channel: channelLabel });
+  return "skipped";
 }

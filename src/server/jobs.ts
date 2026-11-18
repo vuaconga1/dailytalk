@@ -5,14 +5,10 @@ import { getTodayAttempt } from "@/server/learning/lessons";
 import { notify, type NotifyOutcome } from "@/server/notify";
 import { prisma } from "@/server/db";
 import { isCurrentProfile } from "@/domain/profile";
+import { REMIND_LATE_MIN, REMIND_LEAD_MIN, scheduleStudyReminder, type ScheduleResult } from "@/server/integrations/qstash";
 import { minutesOf, shiftDays, vnDate, vnMinuteOfDay, weekStartOf } from "@/lib/time";
 import type { Lesson, Summary } from "@/domain/types";
 
-/** The next lesson is chosen up to this long before the learner's study time. */
-const PREPARE_LEAD_MIN = 60;
-const REMIND_LEAD_MIN = 10;
-/** After a cron outage, stale reminders are not sent hours late. */
-const REMIND_LATE_MIN = 180;
 const BATCH = 5;
 
 export function appUrl(): string {
@@ -35,11 +31,129 @@ export async function expireAccounts(now = new Date()): Promise<number> {
   return count;
 }
 
+function isReminderLearner(user: SessionUser): user is SessionUser & { profile: NonNullable<SessionUser["profile"]> } {
+  return (
+    user.role === "LEARNER" &&
+    !user.isDemo &&
+    (user.status === "ACTIVE" || user.status === "LEAD") &&
+    Boolean(user.plan) &&
+    isCurrentProfile(user.profile) &&
+    user.profile.reminders === true
+  );
+}
+
+export type StudyReminderResult = {
+  outcome: "sent" | "skipped" | "failed" | "duplicate" | "ignored";
+  reason?: string;
+  scheduled?: ScheduleResult;
+};
+
+/**
+ * Prepares today's lesson (if needed) and sends the email/Zalo reminder for one learner.
+ * Always tries to enqueue the next QStash slot when reminders stay on.
+ */
+export async function runStudyReminderForUser(
+  userId: string,
+  now = new Date(),
+  expectedStudyTime?: string,
+): Promise<StudyReminderResult> {
+  const row = await prisma.user.findUnique({ where: { id: userId }, select: SESSION_USER_SELECT });
+  if (!row) return { outcome: "ignored", reason: "Không tìm thấy học viên" };
+  const user = toSessionUser(row);
+  if (!isReminderLearner(user)) {
+    return { outcome: "ignored", reason: "Không đủ điều kiện nhắc học" };
+  }
+
+  if (expectedStudyTime && expectedStudyTime !== user.profile.study_time) {
+    const scheduled = await scheduleStudyReminder(user.id, user.profile.study_time, now);
+    return { outcome: "ignored", reason: "Giờ học đã đổi — xếp lại lịch", scheduled };
+  }
+
+  const today = vnDate(now);
+  const diff = vnMinuteOfDay(now) - minutesOf(user.profile.study_time);
+
+  if (diff < -REMIND_LEAD_MIN) {
+    const scheduled = await scheduleStudyReminder(user.id, user.profile.study_time, now);
+    return { outcome: "ignored", reason: "Chưa tới giờ nhắc", scheduled };
+  }
+  if (diff > REMIND_LATE_MIN) {
+    const scheduled = await scheduleStudyReminder(user.id, user.profile.study_time, now);
+    return { outcome: "ignored", reason: "Quá muộn so với giờ học", scheduled };
+  }
+
+  try {
+    const attempt = await getTodayAttempt(user);
+    if (attempt.completed || attempt.locked) {
+      const scheduled = await scheduleStudyReminder(user.id, user.profile.study_time, now);
+      return { outcome: "skipped", reason: attempt.locked ? "Buổi bị khóa" : "Đã học xong hôm nay", scheduled };
+    }
+
+    const todayUrl = `${appUrl()}/today`;
+    const intro = [
+      `${firstName(user.name)} ơi, đến giờ học WeWIN Daily Speaking rồi!`,
+      `Buổi ${attempt.day}/30: ${attempt.lesson.title}`,
+      attempt.focus ? `Trọng tâm: ${attempt.focus}` : null,
+      `Mở bài hôm nay (15 phút): ${todayUrl}`,
+    ].filter(Boolean);
+    const zaloText = [...intro, `Trả lời "OK" để tiếp tục nhận nhắc học qua Zalo.`].join("\n");
+    const emailText = intro.join("\n");
+    const outcome = await notify(user.id, "study_reminder", today, zaloText, {
+      emailSubject: `Đến giờ học · Buổi ${attempt.day}/30`,
+      emailText,
+      emailCtaUrl: todayUrl,
+    });
+
+    // After today's attempt, push "now" slightly past the late window so the next slot is tomorrow.
+    const afterToday = new Date(now.getTime() + (REMIND_LATE_MIN + 1) * 60_000);
+    const scheduled = await scheduleStudyReminder(user.id, user.profile.study_time, afterToday);
+    return { outcome, scheduled };
+  } catch (error) {
+    console.error("study reminder", userId, error);
+    const scheduled = await scheduleStudyReminder(user.id, user.profile.study_time, now).catch(() => undefined);
+    return { outcome: "failed", reason: String(error).slice(0, 300), scheduled };
+  }
+}
+
+/**
+ * Enqueue the next reminder for a learner after profile/activation changes.
+ * Safe to call when QStash is not configured (dry-run log).
+ */
+export async function enqueueStudyReminder(userId: string): Promise<ScheduleResult | { ok: false; skipped: true; reason: string }> {
+  const row = await prisma.user.findUnique({ where: { id: userId }, select: SESSION_USER_SELECT });
+  if (!row) return { ok: false, skipped: true, reason: "Không tìm thấy học viên" };
+  const user = toSessionUser(row);
+  if (!isReminderLearner(user)) return { ok: false, skipped: true, reason: "Không đủ điều kiện nhắc học" };
+  return scheduleStudyReminder(user.id, user.profile.study_time);
+}
+
+export type EnsureSchedulesResult = { checked: number; scheduled: number; skipped: number; failed: number };
+
+/** Daily safety net: ensure every eligible learner has a QStash reminder queued. Deduped per day. */
+export async function ensureStudySchedules(): Promise<EnsureSchedulesResult> {
+  const rows = await prisma.user.findMany({
+    where: { role: "LEARNER", isDemo: false, status: { in: ["ACTIVE", "LEAD"] }, plan: { not: Prisma.DbNull } },
+    select: SESSION_USER_SELECT,
+  });
+  const result: EnsureSchedulesResult = { checked: 0, scheduled: 0, skipped: 0, failed: 0 };
+  const due = rows.map(toSessionUser).filter(isReminderLearner);
+  result.checked = due.length;
+
+  await inBatches(due, async (user) => {
+    const scheduled = await scheduleStudyReminder(user.id, user.profile.study_time);
+    if (scheduled.ok) result.scheduled++;
+    else if (scheduled.skipped) result.skipped++;
+    else result.failed++;
+  });
+  return result;
+}
+
 export type StudyJobResult = { checked: number; prepared: number; reminders: Record<NotifyOutcome, number>; errors: number };
 
-/** Prepares today's lesson before study time and sends the Zalo reminder. Safe to run every few minutes. */
+/**
+ * Manual / fallback sweep (admin "Chạy ngay" or ?jobs=study).
+ * Production reminders should come from QStash per learner, not this loop.
+ */
 export async function runStudyJobs(now = new Date()): Promise<StudyJobResult> {
-  const today = vnDate(now);
   const minute = vnMinuteOfDay(now);
   const rows = await prisma.user.findMany({
     where: { role: "LEARNER", isDemo: false, status: { in: ["ACTIVE", "LEAD"] }, plan: { not: Prisma.DbNull } },
@@ -53,27 +167,19 @@ export async function runStudyJobs(now = new Date()): Promise<StudyJobResult> {
   };
 
   const due = rows.map(toSessionUser).filter((u): u is SessionUser & { profile: NonNullable<SessionUser["profile"]> } => {
-    if (!isCurrentProfile(u.profile)) return false;
+    if (!isReminderLearner(u)) return false;
     const diff = minute - minutesOf(u.profile.study_time);
-    return diff >= -PREPARE_LEAD_MIN && diff <= REMIND_LATE_MIN;
+    return diff >= -REMIND_LEAD_MIN && diff <= REMIND_LATE_MIN;
   });
 
   await inBatches(due, async (user) => {
     try {
       const attempt = await getTodayAttempt(user);
-      if (attempt.localDate === today && !attempt.wordsDone && !attempt.practice) result.prepared++;
-      const diff = minute - minutesOf(user.profile.study_time);
-      if (!user.profile.reminders || diff < -REMIND_LEAD_MIN || attempt.completed || attempt.locked) return;
-      const text = [
-        `${firstName(user.name)} ơi, đến giờ học WeWIN Daily Speaking rồi!`,
-        `Buổi ${attempt.day}/30: ${attempt.lesson.title}`,
-        attempt.focus ? `Trọng tâm: ${attempt.focus}` : null,
-        `Mở bài hôm nay (15 phút): ${appUrl()}/today`,
-        `Trả lời "OK" để tiếp tục nhận nhắc học qua Zalo.`,
-      ]
-        .filter(Boolean)
-        .join("\n");
-      result.reminders[await notify(user.id, "study_reminder", today, text)]++;
+      if (attempt.localDate === vnDate(now) && !attempt.wordsDone && !attempt.practice) result.prepared++;
+      const out = await runStudyReminderForUser(user.id, now);
+      if (out.outcome === "sent" || out.outcome === "skipped" || out.outcome === "failed" || out.outcome === "duplicate") {
+        result.reminders[out.outcome]++;
+      }
     } catch (error) {
       result.errors++;
       console.error("study job", user.id, error);

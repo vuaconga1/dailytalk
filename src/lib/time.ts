@@ -46,6 +46,11 @@ export function minutesOf(studyTime: string): number {
   return h * 60 + m;
 }
 
+/** Instant for a Vietnam calendar day + minutes since that VN midnight. */
+export function vnInstant(date: string, minuteOfDay: number): Date {
+  return new Date(Date.parse(date) - VN_OFFSET_MS + minuteOfDay * 60_000);
+}
+
 /** Monday (YYYY-MM-DD) of the Vietnam week containing `date`. */
 export function weekStartOf(date: string): string {
   const weekday = new Date(Date.parse(date)).getUTCDay();

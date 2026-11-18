@@ -1,7 +1,7 @@
 import { json, readJson, staffRoute } from "@/server/http/api";
 import { consultantFrom, createLearner, readTerm, text } from "@/server/accounts";
 import { Problem } from "@/lib/errors";
-import { appUrl } from "@/server/jobs";
+import { appUrl, enqueueStudyReminder } from "@/server/jobs";
 import { notify } from "@/server/notify";
 import { prisma } from "@/server/db";
 import { vnDate } from "@/lib/time";
@@ -90,12 +90,15 @@ export const PATCH = staffRoute("manageLearners", async (req, staff) => {
       },
     });
     note = `Kích hoạt ${packageName} (${term.summary}).`;
+    const todayUrl = `${appUrl()}/today`;
     await notify(
       learner.id,
       "activated",
       vnDate(),
-      `Chúc mừng ${learner.name}! Lộ trình WeWIN Daily Speaking của bạn đã được kích hoạt. Mỗi ngày 15 phút, bắt đầu tại: ${appUrl()}/today`,
+      `Chúc mừng ${learner.name}! Lộ trình WeWIN Daily Speaking của bạn đã được kích hoạt. Mỗi ngày 15 phút, bắt đầu tại: ${todayUrl}`,
+      { emailSubject: "Lộ trình Daily Speaking đã được kích hoạt", emailCtaUrl: todayUrl },
     );
+    await enqueueStudyReminder(learner.id).catch((error: unknown) => console.error("schedule reminder", error));
   } else if (action === "pause") {
     await prisma.user.update({ where: { id: learner.id }, data: { status: "PAUSED" } });
     note = "Tạm dừng tài khoản.";
@@ -104,6 +107,7 @@ export const PATCH = staffRoute("manageLearners", async (req, staff) => {
     if (learner.lockAt && learner.lockAt <= now) throw new Problem("Học viên đã hoàn thành lộ trình và bị khóa, hãy kích hoạt lại.");
     await prisma.user.update({ where: { id: learner.id }, data: { status: "ACTIVE" } });
     note = "Mở lại tài khoản.";
+    await enqueueStudyReminder(learner.id).catch((error: unknown) => console.error("schedule reminder", error));
   } else {
     await prisma.user.update({ where: { id: learner.id }, data: { consultantId } });
     note = consultantId ? "Đổi chuyên viên phụ trách." : "Bỏ chuyên viên phụ trách.";

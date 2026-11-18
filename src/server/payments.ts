@@ -14,7 +14,7 @@ import {
 import { Problem } from "@/lib/errors";
 import { vnDate } from "@/lib/time";
 import { prisma } from "@/server/db";
-import { appUrl } from "@/server/jobs";
+import { appUrl, enqueueStudyReminder } from "@/server/jobs";
 import { notify } from "@/server/notify";
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -156,12 +156,15 @@ export async function recordTransfer(t: IncomingTransfer): Promise<TransferOutco
   }
   if (activated) {
     const { userId, name } = activated as { userId: string; name: string };
+    const todayUrl = `${appUrl()}/today`;
     await notify(
       userId,
       "activated",
       vnDate(),
-      `Cảm ơn ${name}! WeWIN đã nhận thanh toán và kích hoạt lộ trình Daily Speaking của bạn. Mỗi ngày 15 phút, học tiếp tại: ${appUrl()}/today`,
+      `Cảm ơn ${name}! WeWIN đã nhận thanh toán và kích hoạt lộ trình Daily Speaking của bạn. Mỗi ngày 15 phút, học tiếp tại: ${todayUrl}`,
+      { emailSubject: "Lộ trình Daily Speaking đã được kích hoạt", emailCtaUrl: todayUrl },
     ).catch((error: unknown) => console.error("payment notify", error));
+    await enqueueStudyReminder(userId).catch((error: unknown) => console.error("schedule reminder", error));
   }
   return outcome;
 }

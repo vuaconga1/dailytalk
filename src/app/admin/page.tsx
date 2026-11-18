@@ -109,7 +109,7 @@ export default async function AdminHome() {
         <article className="card mt-6">
           <h3 className="mb-1 text-lg font-bold">Chạy tác vụ tự động</h3>
           <p className="mb-4 text-sm text-muted">
-            Chuẩn bị bài trước giờ học, gửi nhắc Zalo và tạo tổng kết tuần. Bình thường cron gọi tự động mỗi 5–10 phút.
+            Hết hạn gói, xếp lịch nhắc QStash, quét nhắc (fallback) và tổng kết tuần. Nhắc học production do QStash gọi đúng giờ từng học viên; cron chỉ cần ~1 lần/ngày.
           </p>
           <ApiForm endpoint="/api/admin/jobs" submitLabel="Chạy ngay" successText="json" buttonClassName="btn btn-outline" />
         </article>

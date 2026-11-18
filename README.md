@@ -54,14 +54,18 @@ ADMIN_EMAIL=admin@wewin.edu.vn ADMIN_PASSWORD=... npm run seed:admin
 
 **Lộ trình động.** Khi xác nhận hồ sơ, lộ trình 30 ngày được ghép từ giáo trình (không gọi AI); mỗi ngày lưu `ref` tới bài gốc. Khi học viên mở buổi học, hệ thống chọn giữa bài của ngày đó và bài chưa đạt gần đây (demo: quy tắc, chưa đạt → học lại 1 lần; OpenAI: AI chọn và viết trọng tâm theo lỗi thường gặp, độ khó ±1 bậc), rồi dựng bài cho học viên và lưu vào ngân hàng `LessonContent` để dùng chung. Giáo trình viết ở mức Sơ cấp; khi bật AI và trình độ làm việc khác Sơ cấp, AI viết lại bài cho trình độ đó (giữ tình huống và cấu trúc mẫu câu) và cũng lưu vào ngân hàng. Mỗi tổng kết có `level_signal` (dưới / đúng / trên trình độ); trình độ làm việc (`profile.working_level`) đổi sau 2 tín hiệu cùng chiều liên tiếp (buổi 1 chỉ cần 1). `Attempt.selectedBy`, `plannedTitle`, `focus`, `lessonKey` lưu lý do để chuyên viên xem.
 
-**Cron.** Vercel Hobby chỉ chạy cron 1 lần/ngày, nên dùng cron ngoài (cron-job.org hoặc Upstash QStash) gọi mỗi 5–10 phút:
+**Nhắc học (QStash).** Mỗi học viên được xếp lịch 1 callback đúng `study_time − 10 phút` (giờ VN) tới `POST /api/qstash/study-reminder`. Sau mỗi lần chạy, hệ thống xếp slot ngày tiếp theo. Bật/đổi giờ học, onboarding, kích hoạt gói đều gọi xếp lịch. Biến: `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY`. Free ~1.000 msg/ngày.
+
+**Cron bảo trì (1 lần/ngày).** Không cần poll 5–10 phút:
 
 ```
 GET https://<APP_URL>/api/cron/tick
 Authorization: Bearer <CRON_SECRET>
 ```
 
-Mỗi lần chạy: chuyển tài khoản hết hạn sang `EXPIRED`; chuẩn bị bài trong vòng 60 phút trước giờ học; gửi nhắc Zalo từ 10 phút trước giờ học (mỗi học viên tối đa 1 tin/ngày, ghi ở bảng `Notification`); tạo tổng kết tuần trước (`WeeklyReport`, đánh dấu học viên cần hỗ trợ). Có thể chạy một phần: `?jobs=study`, `?jobs=weekly&week=2026-10-26`.
+Mặc định: `expire` + `ensure` (xếp lại lịch QStash, dedupe) + `weekly` + `recordings`. Fallback quét nhắc: `?jobs=study`. Tuần cụ thể: `?jobs=weekly&week=2026-10-26`.
+
+**Email (Resend).** Gói có kênh `email` nhận mail nhắc qua Resend (`RESEND_API_KEY`, `EMAIL_FROM`). Free tier ~3.000 mail/tháng. Chưa cấu hình thì chỉ dry-run (log). Production cần xác thực domain trên Resend rồi dùng From kiểu `WeWIN Daily Speaking <noreply@wewin.edu.vn>`.
 
 **Zalo OA.** Dùng tin tư vấn (miễn phí) của OA API v3. Học viên quan tâm OA, vào **Cài đặt → Nhắc học qua Zalo** tạo mã `WWxxxxxx` và gửi mã vào khung chat OA; webhook `POST /api/zalo/webhook` (cấu hình trên developers.zalo.me, sự kiện `follow`, `unfollow`, `user_send_text`) liên kết tài khoản. Zalo chỉ cho gửi tin tư vấn trong một khoảng thời gian sau lần tương tác cuối (`ZALO_CS_WINDOW_HOURS`, mặc định 48 giờ), nên tin nhắc mời học viên trả lời "OK"; ngoài cửa sổ, tin được ghi `SKIPPED` kèm lý do. Chưa có biến `ZALO_*` thì mọi tin chỉ được ghi log (chạy thử).
 
@@ -70,7 +74,7 @@ Mỗi lần chạy: chuyển tài khoản hết hạn sang `EXPIRED`; chuẩn b�
 ## Deploy lên Vercel
 
 1. Import repo vào Vercel (framework Next.js được nhận tự động qua `vercel.json`).
-2. Environment Variables: `DATABASE_URL` (pooled URL của Neon), `SESSION_SECRET` (chuỗi ngẫu nhiên ≥16 ký tự), `AI_MODE` và các biến OpenAI nếu dùng, `APP_URL`, `CRON_SECRET`, các biến `ZALO_*` và `R2_*` (xem `.env.example`).
+2. Environment Variables: `DATABASE_URL` (pooled URL của Neon), `SESSION_SECRET` (chuỗi ngẫu nhiên ≥16 ký tự), `AI_MODE` và các biến OpenAI nếu dùng, `APP_URL`, `CRON_SECRET`, `QSTASH_*`, `RESEND_API_KEY`, `EMAIL_FROM`, các biến `ZALO_*` và `R2_*` (xem `.env.example`).
 3. Chạy `npm run db:push` (và `npm run seed:demo` nếu cần) với `DATABASE_URL` production.
 4. Gắn domain `dailytalk.wewin.edu.vn` trong Vercel → Settings → Domains.
 
