@@ -79,10 +79,19 @@ function studyReminderUrl(): string {
  * Deduped per (user, localDate) so ensure/cron backfills are cheap.
  * No-op dry-run when QStash env is missing.
  */
+/**
+ * QStash rejects deduplicationId values that contain `:`.
+ * Keep the same logical key: user + VN localDate + studyTime.
+ */
+export function reminderDedupeId(userId: string, localDate: string, studyTime: string): string {
+  const safeTime = studyTime.replace(/:/g, "");
+  return `study-reminder-${userId}-${localDate}-${safeTime}`;
+}
+
 export async function scheduleStudyReminder(userId: string, studyTime: string, now = new Date()): Promise<ScheduleResult> {
   const slot = nextReminderSlot(studyTime, now);
   const notBeforeSec = Math.floor(slot.notBefore.getTime() / 1000);
-  const dedupeId = `study-reminder:${userId}:${slot.localDate}`;
+  const deduplicationId = reminderDedupeId(userId, slot.localDate, studyTime);
 
   const q = client();
   if (!q) {
@@ -96,7 +105,7 @@ export async function scheduleStudyReminder(userId: string, studyTime: string, n
       url: studyReminderUrl(),
       body: { userId, localDate: slot.localDate, studyTime },
       notBefore: notBeforeSec,
-      deduplicationId: `${dedupeId}:${studyTime}`,
+      deduplicationId,
       retries: 3,
     });
     return {
