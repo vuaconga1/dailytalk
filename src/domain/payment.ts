@@ -35,11 +35,36 @@ export const PLANS: PaymentPlan[] = [
 ];
 
 export function planOf(planId: unknown): PaymentPlan | undefined {
-  return PLANS.find((p) => p.id === planId);
+  return typeof planId === "string" ? PLANS.find((p) => p.id === planId) : undefined;
 }
 
 export function packageNameOf(planId: PlanId): string {
   return planOf(planId)?.packageName ?? "Gói học";
+}
+
+/** Empty channels = legacy/admin accounts that historically used Zalo-only reminders. */
+export function zaloReminderEligible(channels: readonly string[]): boolean {
+  return channels.length === 0 || channels.includes("zalo");
+}
+
+export function planByPackageName(packageName: string | null | undefined): PaymentPlan | undefined {
+  if (!packageName) return undefined;
+  return PLANS.find((p) => p.packageName === packageName);
+}
+
+/**
+ * Channels for admin activate/create: prefer explicit planId, then known packageName,
+ * otherwise email-only (safer than assuming Zalo).
+ */
+export function resolveReminderChannels(input: {
+  planId?: unknown;
+  packageName?: string | null;
+}): ReminderChannel[] {
+  const fromPlan = planOf(input.planId);
+  if (fromPlan) return fromPlan.channels;
+  const fromName = planByPackageName(input.packageName ?? undefined);
+  if (fromName) return fromName.channels;
+  return ["email"];
 }
 
 /** Transfer message: letters and digits only, so every bank app keeps it intact. */

@@ -93,6 +93,7 @@ export function BulkAccounts() {
   const table = useRef<HTMLTableElement>(null);
   const [rows, setRows] = useState<Row[]>(() => Array.from({ length: START_ROWS }, () => blankRow()));
   const [activate, setActivate] = useState(true);
+  const [planId, setPlanId] = useState("");
   const [bulkTerm, setBulkTerm] = useState(String(DEFAULT_PACKAGE_DAYS));
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
@@ -179,7 +180,11 @@ export function BulkAccounts() {
         days: r.days,
         endDate: r.endDate,
       }));
-      const result = await api<BulkResult>("/api/admin/learners", { activate, rows: payload });
+      const result = await api<BulkResult>("/api/admin/learners", {
+        activate,
+        ...(planId ? { planId } : {}),
+        rows: payload,
+      });
       const byKey = new Map(pending.map((r, i) => [r.key, result.results[i]]));
       setRows((all) =>
         all.map((r) => {
@@ -214,6 +219,17 @@ export function BulkAccounts() {
           <input type="checkbox" checked={activate} onChange={(e) => setActivate(e.target.checked)} />
           Kích hoạt ngay
         </label>
+        <select
+          value={planId}
+          onChange={(e) => setPlanId(e.target.value)}
+          className="rounded-lg border border-[#cfdae1] bg-white px-2 py-1.5"
+          aria-label="Gói nhắc học"
+          disabled={!activate}
+        >
+          <option value="">Tuỳ chỉnh (chỉ email)</option>
+          <option value="email">Gói 99k — email</option>
+          <option value="full">Gói 500k — email + Zalo</option>
+        </select>
         <select
           value={bulkTerm}
           onChange={(e) => setBulkTerm(e.target.value)}

@@ -14,6 +14,7 @@
     "db:push": "prisma db push",
     "seed:demo": "tsx scripts/seed-demo.ts",
     "seed:admin": "tsx scripts/seed-admin.ts",
+    "zalo:token": "tsx scripts/zalo-exchange-token.ts",
     "check:curriculum": "tsx scripts/check-curriculum.ts",
     "audio:gen": "tsx --conditions=react-server scripts/gen-audio.ts",
     "audio:to-r2": "tsx --conditions=react-server scripts/audio-to-r2.ts"

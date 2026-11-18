@@ -209,6 +209,14 @@ export default async function LearnerDetailPage({ params }: { params: Promise<{ 
                 successText="Đã cập nhật."
               >
                 <div className="field">
+                  <label htmlFor="planId">Gói nhắc học</label>
+                  <select id="planId" name="planId" defaultValue="">
+                    <option value="">Tuỳ chỉnh (mặc định chỉ email)</option>
+                    <option value="email">Gói 99.000 đ — email</option>
+                    <option value="full">Gói 500.000 đ — email + Zalo</option>
+                  </select>
+                </div>
+                <div className="field">
                   <label htmlFor="packageName">Tên gói</label>
                   <input id="packageName" name="packageName" maxLength={80} placeholder={learner.packageName ?? "Tự đặt theo thời hạn"} />
                 </div>

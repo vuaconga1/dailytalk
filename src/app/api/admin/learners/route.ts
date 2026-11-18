@@ -1,5 +1,5 @@
 import { json, readJson, staffRoute } from "@/server/http/api";
-import { consultantFrom, createLearner, readTerm, text } from "@/server/accounts";
+import { consultantFrom, createLearner, packageAndChannels, readTerm, text } from "@/server/accounts";
 import { Problem } from "@/lib/errors";
 import { appUrl, enqueueStudyReminder } from "@/server/jobs";
 import { notify } from "@/server/notify";
@@ -76,12 +76,13 @@ export const PATCH = staffRoute("manageLearners", async (req, staff) => {
     // Extending an active package adds days after its current end.
     const from = learner.accessEndsAt && learner.accessEndsAt > now ? learner.accessEndsAt : now;
     const term = readTerm(body, from);
-    const packageName = text(body.packageName, 80) ?? term.packageName;
+    const { packageName, reminderChannels } = packageAndChannels(body, term.packageName);
     await prisma.user.update({
       where: { id: learner.id },
       data: {
         status: "ACTIVE",
         packageName,
+        reminderChannels,
         activatedAt: learner.activatedAt ?? now,
         accessEndsAt: term.accessEndsAt,
         lockAt: null,

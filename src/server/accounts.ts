@@ -1,5 +1,6 @@
 import "server-only";
 import { ADMIN_MIN_PASSWORD, DEFAULT_PACKAGE_DAYS, MAX_PACKAGE_DAYS } from "@/domain/access";
+import { packageNameOf, planOf, resolveReminderChannels, type ReminderChannel } from "@/domain/payment";
 import { hashPassword, type SessionUser } from "@/server/auth";
 import { Problem } from "@/lib/errors";
 import { prisma } from "@/server/db";
@@ -53,6 +54,19 @@ export async function consultantFrom(body: Record<string, unknown>): Promise<str
   return consultantId;
 }
 
+/** Resolves package display name + reminder channels for admin activate/create. */
+export function packageAndChannels(body: Record<string, unknown>, fallbackPackageName: string): {
+  packageName: string;
+  reminderChannels: ReminderChannel[];
+} {
+  const plan = planOf(body.planId);
+  const packageName = text(body.packageName, 80) ?? (plan ? packageNameOf(plan.id) : fallbackPackageName);
+  return {
+    packageName,
+    reminderChannels: resolveReminderChannels({ planId: body.planId, packageName }),
+  };
+}
+
 /** Creates one learner account, activated for the chosen term when `activate` is set. */
 export async function createLearner(body: Record<string, unknown>, staff: SessionUser): Promise<string> {
   const name = text(body.name, 80);
@@ -63,7 +77,7 @@ export async function createLearner(body: Record<string, unknown>, staff: Sessio
   const activate = body.activate === true || body.activate === "on";
   const now = new Date();
   const term = activate ? readTerm(body, now) : null;
-  const packageName = term ? (text(body.packageName, 80) ?? term.packageName) : null;
+  const activated = term ? packageAndChannels(body, term.packageName) : null;
 
   const passwordHash = await hashPassword(password);
   const learner = await prisma.user
@@ -74,12 +88,14 @@ export async function createLearner(body: Record<string, unknown>, staff: Sessio
         passwordHash,
         phone,
         consultantId,
-        ...(term && {
-          status: "ACTIVE" as const,
-          packageName,
-          activatedAt: now,
-          accessEndsAt: term.accessEndsAt,
-        }),
+        ...(term &&
+          activated && {
+            status: "ACTIVE" as const,
+            packageName: activated.packageName,
+            reminderChannels: activated.reminderChannels,
+            activatedAt: now,
+            accessEndsAt: term.accessEndsAt,
+          }),
       },
     })
     .catch((error: unknown) => {
@@ -90,7 +106,9 @@ export async function createLearner(body: Record<string, unknown>, staff: Sessio
     data: {
       learnerId: learner.id,
       authorId: staff.id,
-      body: term ? `Admin tạo tài khoản và kích hoạt ${packageName} (${term.summary}).` : "Admin tạo tài khoản.",
+      body: term && activated
+        ? `Admin tạo tài khoản và kích hoạt ${activated.packageName} (${term.summary}).`
+        : "Admin tạo tài khoản.",
     },
   });
   return learner.id;

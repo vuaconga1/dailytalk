@@ -67,7 +67,15 @@ Mặc định: `expire` + `ensure` (xếp lại lịch QStash, dedupe) + `weekly
 
 **Email (Resend).** Gói có kênh `email` nhận mail nhắc qua Resend (`RESEND_API_KEY`, `EMAIL_FROM`). Free tier ~3.000 mail/tháng. Chưa cấu hình thì chỉ dry-run (log). Production cần xác thực domain trên Resend rồi dùng From kiểu `WeWIN Daily Speaking <noreply@wewin.edu.vn>`.
 
-**Zalo OA.** Dùng tin tư vấn (miễn phí) của OA API v3. Học viên quan tâm OA, vào **Cài đặt → Nhắc học qua Zalo** tạo mã `WWxxxxxx` và gửi mã vào khung chat OA; webhook `POST /api/zalo/webhook` (cấu hình trên developers.zalo.me, sự kiện `follow`, `unfollow`, `user_send_text`) liên kết tài khoản. Zalo chỉ cho gửi tin tư vấn trong một khoảng thời gian sau lần tương tác cuối (`ZALO_CS_WINDOW_HOURS`, mặc định 48 giờ), nên tin nhắc mời học viên trả lời "OK"; ngoài cửa sổ, tin được ghi `SKIPPED` kèm lý do. Chưa có biến `ZALO_*` thì mọi tin chỉ được ghi log (chạy thử).
+**Zalo OA.** Dùng tin tư vấn (miễn phí) của OA API v3. Chỉ gói có kênh `zalo` (vd gói 500k) hoặc tài khoản legacy (channels rỗng) mới tạo mã liên kết. Học viên quan tâm OA, vào **Cài đặt → Nhắc học qua Zalo** tạo mã `WWxxxxxx` và gửi mã vào khung chat OA; webhook `POST /api/zalo/webhook` liên kết tài khoản. Zalo chỉ cho gửi tin tư vấn trong một khoảng thời gian sau lần tương tác cuối (`ZALO_CS_WINDOW_HOURS`, mặc định 48 giờ), nên tin nhắc mời học viên trả lời "OK"; ngoài cửa sổ, tin được ghi `SKIPPED`. Chưa có biến `ZALO_*` thì mọi tin chỉ được ghi log (chạy thử).
+
+Cấu hình production (checklist):
+
+1. [developers.zalo.me](https://developers.zalo.me): App gắn Official Account WeWIN; bật quyền OA.
+2. Webhook HTTPS: `{APP_URL}/api/zalo/webhook` — bật `follow`, `unfollow`, `user_send_text`; **tắt** “Lọc cú pháp `#`” (mã liên kết là `WWxxxxxx`).
+3. Điền `ZALO_APP_ID`, `ZALO_APP_SECRET`, `ZALO_OA_SECRET_KEY`, `ZALO_OA_URL` vào `.env` và Vercel.
+4. OA cấp quyền cho App → lấy authorization code → `npm run zalo:token -- --code <CODE>` → dán `ZALO_REFRESH_TOKEN` (token xoay vòng sau đó nằm trong bảng `ZaloToken`).
+5. Smoke test: Settings → tạo mã → gửi OA → badge “Đã liên kết”; Admin → Tin nhắn Zalo / học viên thấy link; nhắc thử trong cửa sổ 48h.
 
 **Audio R2.** Audio shadowing tạo một lần cho mỗi câu, lưu trên Cloudflare R2 (biến `R2_*`) và trả về bằng redirect tới URL công khai; chưa cấu hình R2 thì lưu trong bảng `AudioClip`. Học thuật xem ngân hàng bài và tạo trước audio cho từng bài ở `/admin/lessons`.
 

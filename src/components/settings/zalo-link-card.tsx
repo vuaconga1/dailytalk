@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { api, errorMessage } from "@/client/api";
 
@@ -8,6 +9,8 @@ export type ZaloStatus = {
   oaUrl: string | null;
   linked: boolean;
   followed: boolean;
+  /** False when the paid plan only unlocks email reminders. */
+  eligible: boolean;
 };
 
 export function ZaloLinkCard({ initial }: { initial: ZaloStatus }) {
@@ -21,7 +24,7 @@ export function ZaloLinkCard({ initial }: { initial: ZaloStatus }) {
     setError("");
     try {
       const next = await api<ZaloStatus & { code?: string }>("/api/zalo/link", undefined, { method });
-      setState(next);
+      setState((prev) => ({ ...prev, ...next, eligible: next.eligible ?? prev.eligible }));
       setCode(next.code ?? null);
     } catch (err) {
       setError(errorMessage(err));
@@ -34,11 +37,27 @@ export function ZaloLinkCard({ initial }: { initial: ZaloStatus }) {
     <article className="card mt-5">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-lg font-bold">Nhắc học qua Zalo</h3>
-        <span className={`badge ${state.linked && state.followed ? "" : "badge-gold"}`}>
-          {state.linked ? (state.followed ? "Đã liên kết" : "Đã bỏ quan tâm OA") : "Chưa liên kết"}
+        <span className={`badge ${state.eligible && state.linked && state.followed ? "" : "badge-gold"}`}>
+          {!state.eligible
+            ? "Chưa mở trong gói"
+            : state.linked
+              ? state.followed
+                ? "Đã liên kết"
+                : "Đã bỏ quan tâm OA"
+              : "Chưa liên kết"}
         </span>
       </div>
-      {state.linked ? (
+
+      {!state.eligible ? (
+        <>
+          <p className="mb-4 text-muted">
+            Gói hiện tại chỉ nhắc học qua email. Nâng lên gói email + Zalo để nhận nhắc trên Zalo OA mỗi ngày.
+          </p>
+          <Link href="/payment" className="btn">
+            Xem gói có Zalo
+          </Link>
+        </>
+      ) : state.linked ? (
         <>
           <p className="mb-4 text-muted">
             WeWIN sẽ nhắn nhắc học vào giờ học mỗi ngày. Hãy trả lời tin nhắn của OA ít nhất mỗi 2 ngày để Zalo cho phép
@@ -77,7 +96,9 @@ export function ZaloLinkCard({ initial }: { initial: ZaloStatus }) {
           {code && <p className="note mt-3">Mã có hiệu lực 30 phút.</p>}
         </>
       )}
-      {!state.configured && <p className="note mt-3">Zalo OA đang được thiết lập, tin nhắc sẽ bắt đầu gửi sau.</p>}
+      {!state.configured && state.eligible && (
+        <p className="note mt-3">Zalo OA đang được thiết lập, tin nhắc sẽ bắt đầu gửi sau.</p>
+      )}
       {error && <div className="form-error">{error}</div>}
     </article>
   );

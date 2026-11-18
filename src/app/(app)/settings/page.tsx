@@ -1,5 +1,6 @@
 import { SettingsForm } from "@/components/settings/settings-form";
 import { ZaloLinkCard } from "@/components/settings/zalo-link-card";
+import { zaloReminderEligible } from "@/domain/payment";
 import { requirePlan } from "@/server/http/page-guards";
 import { prisma } from "@/server/db";
 import { oaFollowUrl, zaloConfigured } from "@/server/integrations/zalo";
@@ -7,6 +8,7 @@ import { oaFollowUrl, zaloConfigured } from "@/server/integrations/zalo";
 export default async function SettingsPage() {
   const user = await requirePlan();
   const link = user.isDemo ? null : await prisma.zaloLink.findUnique({ where: { userId: user.id } });
+  const eligible = zaloReminderEligible(user.reminderChannels);
 
   return (
     <section className="animate-fade-in mx-auto w-full max-w-[850px] pb-12">
@@ -31,7 +33,13 @@ export default async function SettingsPage() {
 
         {!user.isDemo && (
           <ZaloLinkCard
-            initial={{ configured: zaloConfigured(), oaUrl: oaFollowUrl(), linked: Boolean(link), followed: link?.followed ?? false }}
+            initial={{
+              configured: zaloConfigured(),
+              oaUrl: oaFollowUrl(),
+              linked: Boolean(link),
+              followed: link?.followed ?? false,
+              eligible,
+            }}
           />
         )}
       </div>
