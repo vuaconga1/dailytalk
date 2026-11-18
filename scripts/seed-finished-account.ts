@@ -84,7 +84,9 @@ async function run() {
     const date = dates[i];
     const started = eveningOf(date, (i % 5) * 2);
 
-    let lesson: Lesson | null = renderLesson(planDay.ref, PROFILE, PROFILE.working_level ?? "elementary");
+    let lesson: Lesson | null = planDay?.ref
+      ? renderLesson(planDay.ref, PROFILE, PROFILE.working_level ?? "elementary")
+      : null;
     if (!lesson) {
       lesson = LESSONS.L11;
     }
