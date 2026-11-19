@@ -183,6 +183,8 @@ export const INDUSTRY_MEMBERS: Record<string, IndustryMembers> = {
     fallback: m("education", "teacher"),
     positions: {
       "Giáo viên": m("education", "teacher"),
+      "Giáo viên Văn": m("literature", "literature teacher"),
+      "Giáo viên Toán": m("math", "math teacher"),
       "Giảng viên": m("education", "lecturer", { class: "the lecture" }),
       "Giáo viên tiếng Anh": m("education", "English teacher"),
       "Giáo viên IELTS": m("education", "IELTS teacher", { class: "the IELTS class" }),

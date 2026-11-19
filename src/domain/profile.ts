@@ -4,14 +4,19 @@ import {
   FREQUENCIES,
   GENDERS,
   GOALS,
+  GRADE_LEVELS,
   INDUSTRIES,
+  isTeachingPosition,
   labelOf,
   LEVEL_IDS,
   MAX_DURATION_MONTHS,
   OTHER,
+  TEACHING_PURPOSES,
   type FrequencyId,
   type GenderId,
+  type GradeLevelId,
   type LevelId,
+  type TeachingPurposeId,
 } from "@/domain/profile-options";
 import { isStudyTime } from "@/lib/time";
 import type { LearnerProfile } from "@/domain/types";
@@ -56,6 +61,20 @@ export function readProfileInput(body: Record<string, unknown>): ProfileInput {
   const positionOther = position === OTHER ? str(body, "position_other", OTHER_MAX) : "";
   if (position === OTHER && !positionOther) throw new Problem("Hãy nhập vị trí của bạn.");
 
+  let gradeLevel: GradeLevelId | undefined;
+  let teachingPurposes: TeachingPurposeId[] | undefined;
+  if (isTeachingPosition(industry, position)) {
+    const grade = str(body, "grade_level", 30);
+    if (!GRADE_LEVELS.some((item) => item.id === grade)) throw new Problem("Hãy chọn cấp học bạn đang dạy.");
+    gradeLevel = grade as GradeLevelId;
+    const purposeIds = new Set(TEACHING_PURPOSES.map((item) => item.id));
+    const raw = body.teaching_purposes;
+    if (!Array.isArray(raw) || !raw.length || raw.some((item) => typeof item !== "string" || !purposeIds.has(item as TeachingPurposeId))) {
+      throw new Problem("Hãy chọn ít nhất một mục đích học tiếng Anh.");
+    }
+    teachingPurposes = [...new Set(raw as TeachingPurposeId[])];
+  }
+
   const selfLevel = str(body, "self_level", 20) as LevelId;
   if (!LEVEL_IDS.includes(selfLevel)) throw new Problem("Hãy chọn trình độ hiện tại.");
   const frequency = str(body, "frequency", 20) as FrequencyId;
@@ -82,6 +101,7 @@ export function readProfileInput(body: Record<string, unknown>): ProfileInput {
     position_other: positionOther,
     audiences: ids(body, "audiences", new Set(AUDIENCES.map((a) => a.id)), "đối tượng giao tiếp"),
     goals: ids(body, "goals", new Set(GOALS.map((g) => g.id)), "mục tiêu học tiếng Anh"),
+    ...(gradeLevel && teachingPurposes ? { grade_level: gradeLevel, teaching_purposes: teachingPurposes } : {}),
     self_level: selfLevel,
     frequency,
     duration_months: duration,
@@ -92,13 +112,18 @@ export function readProfileInput(body: Record<string, unknown>): ProfileInput {
 }
 
 /** Human-readable labels; "Khác" resolves to the learner's own text. */
-export function profileLabels(p: Pick<LearnerProfile, "industry" | "industry_other" | "position" | "position_other" | "audiences" | "goals">) {
+export function profileLabels(
+  p: Pick<LearnerProfile, "industry" | "industry_other" | "position" | "position_other" | "audiences" | "goals"> &
+    Partial<Pick<LearnerProfile, "grade_level" | "teaching_purposes">>,
+) {
   const sector = INDUSTRIES.find((i) => i.id === p.industry);
   return {
     industry: p.industry === OTHER ? p.industry_other : (sector?.label ?? p.industry),
     position: p.position === OTHER ? p.position_other : (sector?.positions.find((x) => x.id === p.position)?.label ?? p.position),
     audiences: p.audiences.map((a) => labelOf(AUDIENCES, a) ?? a),
     goals: p.goals.map((g) => labelOf(GOALS, g) ?? g),
+    grade: p.grade_level ? (GRADE_LEVELS.find((item) => item.id === p.grade_level)?.label ?? p.grade_level) : undefined,
+    teaching_purposes: (p.teaching_purposes ?? []).map((id) => TEACHING_PURPOSES.find((item) => item.id === id)?.label ?? id),
   };
 }
 

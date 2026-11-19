@@ -183,6 +183,7 @@ model LessonContent {
   lastUsed  DateTime @default(now())
 
   @@index([lastUsed])
+  @@index([industry, position])
 }
 
 /// Shared TTS audio, generated once and reused by every learner.

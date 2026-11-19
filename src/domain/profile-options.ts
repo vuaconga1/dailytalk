@@ -48,7 +48,7 @@ export const INDUSTRIES: Industry[] = [
   sector("tourism_hotel", "Du lịch – Khách sạn", "Hướng dẫn viên du lịch, Nhân viên điều hành tour, Nhân viên lễ tân, Nhân viên đặt phòng, Nhân viên buồng phòng, Quản lý khách sạn, Nhân viên đại lý du lịch"),
   sector("restaurant", "Nhà hàng – Ẩm thực", "Nhân viên phục vụ, Đầu bếp, Phụ bếp, Bếp trưởng, Nhân viên pha chế, Nhân viên thu ngân, Quản lý nhà hàng"),
   sector("aviation_maritime", "Hàng không – Hàng hải", "Phi công, Tiếp viên hàng không, Nhân viên sân bay, Nhân viên điều hành bay, Thuyền trưởng, Thủy thủ, Kỹ sư tàu biển"),
-  sector("education", "Giáo dục – Đào tạo", "Giáo viên, Giảng viên, Giáo viên tiếng Anh, Giáo viên IELTS, Trợ giảng, Gia sư, Chuyên viên tư vấn tuyển sinh, Chuyên viên học vụ, Quản lý trung tâm"),
+  sector("education", "Giáo dục – Đào tạo", "Giáo viên, Giáo viên Văn, Giáo viên Toán, Giảng viên, Giáo viên tiếng Anh, Giáo viên IELTS, Trợ giảng, Gia sư, Chuyên viên tư vấn tuyển sinh, Chuyên viên học vụ, Quản lý trung tâm"),
   sector("healthcare", "Y tế – Chăm sóc sức khỏe", "Bác sĩ, Y tá, Điều dưỡng, Dược sĩ, Kỹ thuật viên xét nghiệm, Nhân viên y tế, Nhân viên chăm sóc bệnh nhân, Chuyên viên dinh dưỡng"),
   sector("pharma_bio", "Dược phẩm – Sinh học", "Trình dược viên, Nhân viên sản xuất dược phẩm, Nhân viên kiểm nghiệm, Chuyên viên nghiên cứu dược phẩm, Chuyên viên đăng ký thuốc"),
   sector("legal", "Pháp luật – Luật", "Luật sư, Chuyên viên pháp chế, Trợ lý luật sư, Công chứng viên, Thẩm phán, Kiểm sát viên, Chuyên viên tư vấn pháp lý"),
@@ -66,6 +66,42 @@ export const INDUSTRIES: Industry[] = [
   sector("personal_services", "Dịch vụ cá nhân", "Người giúp việc, Bảo mẫu, Nhân viên chăm sóc trẻ em, Nhân viên chăm sóc người cao tuổi, Nhân viên vệ sinh, Nhân viên giặt ủi"),
   { id: OTHER, label: "Khác", positions: pos("") },
 ];
+
+export const GRADE_LEVELS = [
+  { id: "preschool", label: "Mầm non" },
+  { id: "primary", label: "Tiểu học" },
+  { id: "lower_secondary", label: "Trung học cơ sở" },
+  { id: "upper_secondary", label: "Trung học phổ thông" },
+] as const;
+
+export type GradeLevelId = (typeof GRADE_LEVELS)[number]["id"];
+
+export const TEACHING_PURPOSES = [
+  { id: "teach_lesson", label: "Giảng bài cho học sinh" },
+  { id: "guide_practice", label: "Hướng dẫn bài tập" },
+  { id: "give_feedback", label: "Nhận xét và động viên" },
+  { id: "talk_parents", label: "Trao đổi với phụ huynh" },
+  { id: "talk_colleagues", label: "Giao tiếp với đồng nghiệp" },
+  { id: "report_manager", label: "Báo cáo với quản lý" },
+] as const;
+
+export type TeachingPurposeId = (typeof TEACHING_PURPOSES)[number]["id"];
+
+/** Classroom jobs in the education industry. Ids match slugify(label). */
+export const TEACHING_POSITIONS = new Set([
+  "giao_vien",
+  "giao_vien_van",
+  "giao_vien_toan",
+  "giang_vien",
+  "giao_vien_tieng_anh",
+  "giao_vien_ielts",
+  "tro_giang",
+  "gia_su",
+]);
+
+export function isTeachingPosition(industry: string, position: string): boolean {
+  return industry === "education" && TEACHING_POSITIONS.has(position);
+}
 
 export const AUDIENCES: Option[] = [
   { id: "customers", label: "Khách hàng nước ngoài" },

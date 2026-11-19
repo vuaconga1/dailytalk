@@ -1,4 +1,5 @@
 import type { Cluster } from "@/domain/curriculum/types";
+import { educationStudentSlots } from "./teach/education-slots";
 
 export const education: Cluster = {
   id: "education",
@@ -1573,4 +1574,5 @@ export const education: Cluster = {
       roleplay: ["{a_person} in a full session with you", "Dẫn trọn buổi: mở đầu, sửa lỗi, nhận xét và giao bài; dùng đủ 4 mẫu câu của bài", "Hello! I'm here. Let's begin. What are we doing today?"],
     },
   ],
+  studentSlots: educationStudentSlots,
 };

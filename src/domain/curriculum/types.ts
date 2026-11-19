@@ -1,4 +1,5 @@
 import type { PartOfSpeech } from "@/domain/frames";
+import type { GradeLevelId } from "@/domain/profile-options";
 import type { SkillId } from "@/domain/types";
 
 /** A sentence frame with its Vietnamese guide (meaning, structure, usage). */
@@ -25,6 +26,8 @@ export type ClusterId =
   | "hospitality"
   | "healthcare"
   | "education"
+  | "literature"
+  | "math"
   | "research"
   | "operations"
   | "household";
@@ -62,6 +65,25 @@ export type CurriculumDay = {
   roleplay: [role: string, task: string, opening: string];
 };
 
+/** 1-based study day → a full lesson that can replace the base day. */
+export type DayPack = Partial<Record<number, CurriculumDay>>;
+
+export type GradeId = GradeLevelId;
+
+/** One grade of a subject: a 30-day student base plus optional adult packs. */
+export type GradeTrack = {
+  grade: GradeId;
+  className: string;
+  gradeLabel: string;
+  people?: Partial<Record<Audience, [en: string, vi: string]>>;
+  days: CurriculumDay[];
+  packs: {
+    talk_parents: DayPack;
+    talk_colleagues: DayPack;
+    report_manager: DayPack;
+  };
+};
+
 export type Cluster = {
   id: ClusterId;
   label: string;
@@ -73,6 +95,13 @@ export type Cluster = {
   vars: Record<string, string>;
   /** Exactly 30 days. Days 19–20 and 26–27 may be replaced by the travel / interview modules. */
   days: CurriculumDay[];
+  /** Literature and math: four grade tracks. `days` is the lower-secondary student base. */
+  tracks?: Record<GradeId, GradeTrack>;
+  /**
+   * Education only. Student lessons for slots 15–21, 25 and 27, used when a teaching
+   * profile did not select the adult purpose that owns that slot.
+   */
+  studentSlots?: DayPack;
 };
 
 export type Member = {

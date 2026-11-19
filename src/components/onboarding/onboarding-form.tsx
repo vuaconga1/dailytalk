@@ -6,7 +6,7 @@ import { api, errorMessage } from "@/client/api";
 import { EMAIL_MAX, PHONE_MAX } from "@/domain/contact";
 import { isLightPace } from "@/domain/pace";
 import { MAX_AGE, MIN_AGE, NAME_MAX } from "@/domain/profile";
-import { AUDIENCES, DURATIONS, FREQUENCIES, GENDERS, GOALS, INDUSTRIES, labelOf, LEVELS, OTHER, type Option } from "@/domain/profile-options";
+import { AUDIENCES, DURATIONS, FREQUENCIES, GENDERS, GOALS, GRADE_LEVELS, INDUSTRIES, isTeachingPosition, labelOf, LEVELS, OTHER, TEACHING_PURPOSES, type Option } from "@/domain/profile-options";
 
 export type OnboardingValues = Form;
 
@@ -21,6 +21,8 @@ type Form = {
   position_other: string;
   audiences: string[];
   goals: string[];
+  grade_level: string;
+  teaching_purposes: string[];
   self_level: string;
   frequency: string;
   duration_months: string;
@@ -40,6 +42,8 @@ const EMPTY: Form = {
   position_other: "",
   audiences: [],
   goals: [],
+  grade_level: "",
+  teaching_purposes: [],
   self_level: "",
   frequency: "",
   duration_months: "",
@@ -133,6 +137,10 @@ export function OnboardingForm({
     e.preventDefault();
     if (!form.audiences.length) return setError("Hãy chọn ít nhất một đối tượng giao tiếp.");
     if (!form.goals.length) return setError("Hãy chọn ít nhất một mục tiêu học tiếng Anh.");
+    if (isTeachingPosition(form.industry, form.position)) {
+      if (!GRADE_LEVELS.some((item) => item.id === form.grade_level)) return setError("Hãy chọn cấp học bạn đang dạy.");
+      if (!form.teaching_purposes.length) return setError("Hãy chọn ít nhất một mục đích học tiếng Anh.");
+    }
     setError("");
     setStep("confirm");
     window.scrollTo(0, 0);
@@ -159,6 +167,12 @@ export function OnboardingForm({
       ["Giới tính", labelOf(GENDERS, form.gender) ?? ""],
       ["Công việc", industryLabel ?? ""],
       ["Vị trí", positionLabel ?? ""],
+      ...(isTeachingPosition(form.industry, form.position)
+        ? ([
+            ["Mục đích học tiếng Anh", form.teaching_purposes.map((id) => TEACHING_PURPOSES.find((item) => item.id === id)?.label ?? id).join(", ")],
+            ["Cấp đang dạy", GRADE_LEVELS.find((item) => item.id === form.grade_level)?.label ?? ""],
+          ] as [string, string][])
+        : []),
       ["Giao tiếp với", form.audiences.map((a) => labelOf(AUDIENCES, a)).join(", ")],
       ["Mục tiêu", form.goals.map((g) => labelOf(GOALS, g)).join(", ")],
       ["Trình độ hiện tại", labelOf(LEVELS, form.self_level) ?? ""],
@@ -267,7 +281,7 @@ export function OnboardingForm({
             id="industry"
             required
             value={form.industry}
-            onChange={(e) => setForm((f) => ({ ...f, industry: e.target.value, position: "", position_other: "" }))}
+            onChange={(e) => setForm((f) => ({ ...f, industry: e.target.value, position: "", position_other: "", grade_level: "", teaching_purposes: [] }))}
           >
             <option value="" disabled>
               Chọn ngành nghề
@@ -287,7 +301,13 @@ export function OnboardingForm({
         )}
         <div className="field">
           <label htmlFor="position">Vị trí</label>
-          <select id="position" required disabled={!sector} value={form.position} onChange={(e) => set("position", e.target.value)}>
+          <select
+            id="position"
+            required
+            disabled={!sector}
+            value={form.position}
+            onChange={(e) => setForm((f) => ({ ...f, position: e.target.value, grade_level: "", teaching_purposes: [] }))}
+          >
             <option value="" disabled>
               {sector ? "Chọn vị trí" : "Chọn công việc trước"}
             </option>
@@ -303,6 +323,18 @@ export function OnboardingForm({
             <label htmlFor="position_other">Vị trí khác</label>
             <input id="position_other" required maxLength={100} value={form.position_other} onChange={(e) => set("position_other", e.target.value)} placeholder="Ví dụ: Chuyên viên pháp chế" />
           </div>
+        )}
+        {isTeachingPosition(form.industry, form.position) && (
+          <>
+            <div className="field md:col-span-2">
+              <label>Bạn muốn học tiếng Anh để làm gì? (chọn nhiều)</label>
+              <Chips options={[...TEACHING_PURPOSES]} value={form.teaching_purposes} onChange={(v) => set("teaching_purposes", v)} />
+            </div>
+            <div className="field md:col-span-2">
+              <label>Bạn đang dạy học sinh cấp nào?</label>
+              <Choice name="grade_level" options={GRADE_LEVELS} value={form.grade_level} onChange={(v) => set("grade_level", v)} />
+            </div>
+          </>
         )}
       </div>
 

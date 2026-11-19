@@ -31,6 +31,8 @@ export default async function OnboardingPage() {
         position_other: p.position_other,
         audiences: p.audiences,
         goals: p.goals,
+        grade_level: p.grade_level ?? "",
+        teaching_purposes: p.teaching_purposes ?? [],
         self_level: p.self_level,
         frequency: p.frequency,
         duration_months: p.duration_months ? String(p.duration_months) : "",

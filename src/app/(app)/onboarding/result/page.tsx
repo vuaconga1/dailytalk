@@ -21,7 +21,10 @@ export default async function OnboardingResultPage() {
           <h2 className="mb-2 text-[28px] font-bold text-navy">{classification.level_label}</h2>
           <p className="leading-[1.7] text-muted">{classification.summary_vi}</p>
           <p className="mt-4 text-sm">
-            <b>Bối cảnh:</b> {labels.industry} · giao tiếp với {labels.audiences.join(", ").toLowerCase()}
+            <b>Bối cảnh:</b> {labels.industry}
+            {labels.grade ? ` · ${labels.grade}` : ""}
+            {labels.teaching_purposes.length ? ` · ${labels.teaching_purposes.join(", ")}` : ""} · giao tiếp với{" "}
+            {labels.audiences.join(", ").toLowerCase()}
           </p>
         </article>
         <article className="card">

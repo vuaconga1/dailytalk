@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { profileLabels } from "@/domain/profile";
-import { INDUSTRIES, OTHER, slugify, type LevelId } from "@/domain/profile-options";
+import { INDUSTRIES, OTHER, slugify, type GradeLevelId, type LevelId, type TeachingPurposeId } from "@/domain/profile-options";
 import type { LearnerProfile, Lesson, PlanDay, StudyPlan } from "@/domain/types";
 import { INDUSTRY_MEMBERS } from "./members";
 import { INTERVIEW_DAYS, TRAVEL_DAYS } from "./modules";
@@ -10,6 +10,8 @@ import {
   type Cluster,
   type ClusterId,
   type CurriculumDay,
+  type DayPack,
+  type GradeTrack,
   type Member,
 } from "./types";
 
@@ -30,6 +32,8 @@ export const CLUSTER_LABELS: Record<ClusterId, string> = {
   hospitality: "Dịch vụ khách: du lịch, nhà hàng, làm đẹp",
   healthcare: "Y tế – chăm sóc sức khỏe",
   education: "Giáo dục – huấn luyện",
+  literature: "Giảng dạy Văn",
+  math: "Giảng dạy Toán",
   research: "Nghiên cứu – khoa học",
   operations: "Vận hành – an ninh – khẩn cấp",
   household: "Dịch vụ gia đình",
@@ -47,6 +51,8 @@ const CLUSTER_LOADERS: Record<ClusterId, () => Promise<Cluster>> = {
   hospitality: () => import("@/data/curriculum/hospitality").then((m) => m.hospitality),
   healthcare: () => import("@/data/curriculum/healthcare").then((m) => m.healthcare),
   education: () => import("@/data/curriculum/education").then((m) => m.education),
+  literature: () => import("@/data/curriculum/literature").then((m) => m.literature),
+  math: () => import("@/data/curriculum/math").then((m) => m.math),
   research: () => import("@/data/curriculum/research").then((m) => m.research),
   operations: () => import("@/data/curriculum/operations").then((m) => m.operations),
   household: () => import("@/data/curriculum/household").then((m) => m.household),
@@ -106,20 +112,85 @@ function lowerFirst(s: string): string {
   return s.length > 1 && s[1] === s[1].toLowerCase() ? s[0].toLowerCase() + s.slice(1) : s;
 }
 
+const GENERIC_CLASS: Record<GradeLevelId, { className: string; gradeLabel: string }> = {
+  preschool: { className: "the preschool class", gradeLabel: "preschool" },
+  primary: { className: "the primary class", gradeLabel: "grade 3" },
+  lower_secondary: { className: "the lower-secondary class", gradeLabel: "grade 8" },
+  upper_secondary: { className: "the upper-secondary class", gradeLabel: "grade 11" },
+};
+
+const PARENT_SLOTS = [15, 16, 21, 25];
+const COLLEAGUE_SLOTS = [17, 20, 27];
+const MANAGER_SLOTS = [18, 19];
+const STUDENT_PURPOSES: TeachingPurposeId[] = ["teach_lesson", "guide_practice", "give_feedback"];
+
+function applySlots(days: CurriculumDay[], slots: number[], pack: DayPack | undefined) {
+  if (!pack) return;
+  for (const n of slots) {
+    const lesson = pack[n];
+    if (lesson) days[n - 1] = lesson;
+  }
+}
+
+/** Student base, with adult packs added or removed according to the selected purposes. */
+export function assembleDays(cluster: Cluster, track: GradeTrack | null, purposes: TeachingPurposeId[] | undefined): CurriculumDay[] {
+  const days = [...(track?.days ?? cluster.days)];
+  const selected = new Set(purposes ?? []);
+  if (track) {
+    if (selected.has("talk_parents")) applySlots(days, PARENT_SLOTS, track.packs.talk_parents);
+    if (selected.has("talk_colleagues")) applySlots(days, COLLEAGUE_SLOTS, track.packs.talk_colleagues);
+    if (selected.has("report_manager")) applySlots(days, MANAGER_SLOTS, track.packs.report_manager);
+    return days;
+  }
+  if (selected.size && cluster.studentSlots) {
+    if (!selected.has("talk_parents")) applySlots(days, PARENT_SLOTS, cluster.studentSlots);
+    if (!selected.has("talk_colleagues")) applySlots(days, COLLEAGUE_SLOTS, cluster.studentSlots);
+    if (!selected.has("report_manager")) applySlots(days, MANAGER_SLOTS, cluster.studentSlots);
+  }
+  return days;
+}
+
+function audiencesFor(profile: LearnerProfile): Audience[] {
+  const purposes = profile.teaching_purposes ?? [];
+  const gated = purposes.length > 0;
+  const allow = new Set<Audience>();
+  for (const audience of WORK_AUDIENCES) {
+    if (!profile.audiences.includes(audience)) continue;
+    if (gated && audience === "partners" && !purposes.includes("talk_parents")) continue;
+    if (gated && audience === "colleagues" && !purposes.includes("talk_colleagues")) continue;
+    if (gated && audience === "managers" && !purposes.includes("report_manager")) continue;
+    allow.add(audience);
+  }
+  if (purposes.some((purpose) => STUDENT_PURPOSES.includes(purpose))) allow.add("customers");
+  if (purposes.includes("talk_parents")) allow.add("partners");
+  if (purposes.includes("talk_colleagues")) allow.add("colleagues");
+  if (purposes.includes("report_manager")) allow.add("managers");
+  return [...allow];
+}
+
 type Context = {
   cluster: Cluster;
+  track: GradeTrack | null;
+  assembled: CurriculumDay[];
   member: Member;
   jobVi: string;
   audiences: Audience[];
+  gradeLevel?: GradeLevelId;
 };
 
 async function contextOf(profile: LearnerProfile): Promise<Context> {
   const member = memberFor(profile);
+  const cluster = await loadCluster(member.cluster);
+  const gradeLevel = profile.grade_level ?? (cluster.tracks ? "lower_secondary" : undefined);
+  const track = gradeLevel && cluster.tracks ? cluster.tracks[gradeLevel] : null;
   return {
-    cluster: await loadCluster(member.cluster),
+    cluster,
+    track,
+    assembled: assembleDays(cluster, track, profile.teaching_purposes),
     member,
     jobVi: lowerFirst(profileLabels(profile).position),
-    audiences: WORK_AUDIENCES.filter((a) => profile.audiences.includes(a)),
+    audiences: audiencesFor(profile),
+    gradeLevel,
   };
 }
 
@@ -131,8 +202,16 @@ function varsFor(ctx: Context, audience: Audience | null): Record<string, string
     job_vi: ctx.jobVi,
   };
   vars.a_job = `${article(ctx.member.job)} ${ctx.member.job}`;
+  if (ctx.track) {
+    vars.grade = ctx.track.gradeLabel;
+    if (!ctx.member.vars?.class) vars.class = ctx.track.className;
+  } else if (ctx.gradeLevel) {
+    const generic = GENERIC_CLASS[ctx.gradeLevel];
+    vars.grade = generic.gradeLabel;
+    if (!ctx.member.vars?.class) vars.class = generic.className;
+  }
   if (audience) {
-    const [en, vi] = ctx.member.people?.[audience] ?? ctx.cluster.people[audience];
+    const [en, vi] = ctx.track?.people?.[audience] ?? ctx.member.people?.[audience] ?? ctx.cluster.people[audience];
     Object.assign(vars, {
       person: en,
       person_vi: vi,
@@ -167,21 +246,22 @@ type DayRef = {
 function resolveRef(ref: string, ctx: Context): DayRef | null {
   const [source, i, audience] = ref.split(":");
   const index = Number(i);
-  const days = source === ctx.cluster.id ? ctx.cluster.days : MODULES[source];
+  const days = source === ctx.cluster.id ? ctx.assembled : MODULES[source];
   const day = days?.[index];
   if (!day) return null;
+  const picked = source === ctx.cluster.id ? pickAudience(day, ctx.audiences) : ((audience || null) as Audience | null);
   return {
     day,
     source,
     index,
-    audience: (audience || null) as Audience | null,
+    audience: picked,
   };
 }
 
 /** 30-day reference roadmap for the learner's cluster, audiences and goals. */
 export async function buildPlan(profile: LearnerProfile): Promise<StudyPlan> {
   const ctx = await contextOf(profile);
-  const refs: string[] = ctx.cluster.days.map((d, i) => `${ctx.cluster.id}:${i}:${pickAudience(d, ctx.audiences) ?? ""}`);
+  const refs: string[] = ctx.assembled.map((d, i) => `${ctx.cluster.id}:${i}:${pickAudience(d, ctx.audiences) ?? ""}`);
   if (profile.audiences.includes("travel")) TRAVEL_SLOTS.forEach((day, i) => (refs[day - 1] = `travel:${i}:`));
   if (profile.audiences.includes("recruiters")) INTERVIEW_SLOTS.forEach((day, i) => (refs[day - 1] = `interview:${i}:`));
 
@@ -197,8 +277,20 @@ export async function buildPlan(profile: LearnerProfile): Promise<StudyPlan> {
       ref,
     };
   });
+  const subject = ctx.cluster.id === "literature" ? "Văn" : ctx.cluster.id === "math" ? "Toán" : "";
+  const purposes = profile.teaching_purposes ?? [];
+  const goal = subject
+    ? `Sau 30 ngày, bạn tự tin dùng tiếng Anh khi dạy ${subject}: ${[
+        "giảng bài và giao bài cho học sinh",
+        purposes.includes("talk_parents") ? "trao đổi với phụ huynh" : "",
+        purposes.includes("talk_colleagues") ? "trao đổi với đồng nghiệp" : "",
+        purposes.includes("report_manager") ? "báo cáo với quản lý" : "",
+      ]
+        .filter(Boolean)
+        .join(", ")}.`
+    : `Sau 30 ngày, bạn tự tin dùng tiếng Anh trong công việc ${ctx.jobVi}: ${ctx.cluster.summary}.`;
   return {
-    goal: `Sau 30 ngày, bạn tự tin dùng tiếng Anh trong công việc ${ctx.jobVi}: ${ctx.cluster.summary}.`,
+    goal,
     days,
   };
 }

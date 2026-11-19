@@ -5,6 +5,7 @@
  *   npm run check:curriculum -- --cluster sales     (one cluster only)
  */
 import { buildPlan, coverage, isModuleRef, loadAllClusters, loadCluster, renderLesson } from "../src/domain/curriculum";
+import { readProfileInput } from "../src/domain/profile";
 import { INDUSTRY_MEMBERS } from "../src/domain/curriculum/members";
 import { buildReviewLesson, REVIEW_DAYS, reviewSources } from "../src/domain/curriculum/review";
 import { INTERVIEW_DAYS, TRAVEL_DAYS } from "../src/domain/curriculum/modules";
@@ -72,6 +73,31 @@ async function main() {
     for (const a of WORK_AUDIENCES) if (!cluster.people[a]?.[0] || !cluster.people[a]?.[1]) err(cluster.id, `people.${a} missing`);
     cluster.days.forEach((d, i) => checkDay(`${cluster.id} day ${i + 1}`, d, true));
     checkNewWords(cluster.id, cluster.days);
+    if (cluster.tracks) {
+      for (const track of Object.values(cluster.tracks)) {
+        const where = `${cluster.id}/${track.grade}`;
+        if (track.days.length !== 30) err(where, `has ${track.days.length} days, needs 30`);
+        track.days.forEach((d, i) => checkDay(`${where} day ${i + 1}`, d, true));
+        const packs = Object.values(track.packs);
+        const packDays = packs.flatMap((pack) => Object.values(pack).filter((lesson) => lesson != null));
+        for (const pack of packs) {
+          for (const [n, lesson] of Object.entries(pack)) {
+            if (lesson) checkDay(`${where} pack ${n}`, lesson, true);
+          }
+        }
+        checkNewWords(where, [...track.days, ...packDays]);
+      }
+    }
+    if (cluster.studentSlots) {
+      const blob = JSON.stringify(cluster.days).toLowerCase();
+      for (const [n, lesson] of Object.entries(cluster.studentSlots)) {
+        if (!lesson) continue;
+        checkDay(`${cluster.id} student slot ${n}`, lesson, true);
+        for (const [word] of lesson.words) {
+          if (blob.includes(word.toLowerCase())) err(`${cluster.id} student slot ${n}`, `word "${word}" already appears in the base 30`);
+        }
+      }
+    }
   }
   if (!only) {
     [...TRAVEL_DAYS, ...INTERVIEW_DAYS].forEach((d, i) => checkDay(`module ${i}`, d, false));
@@ -169,6 +195,102 @@ async function main() {
         if (r.vocabulary.length !== 30) err(where, `recaps ${r.vocabulary.length} words, needs 30`);
       }
     }
+  }
+
+  if (!only) {
+    const body = {
+      industry_other: "",
+      position_other: "",
+      audiences: ["customers"],
+      goals: ["meetings"],
+      self_level: "elementary",
+      frequency: "weekly",
+      duration_months: "3",
+      age: "32",
+      gender: "female",
+      study_time: "20:30",
+      reminders: false,
+    };
+    const mustThrow = (extra: Record<string, unknown>, message: string) => {
+      try {
+        readProfileInput({ ...body, ...extra });
+        err("profile", `accepted ${message}`);
+      } catch (error) {
+        if ((error as Error).message !== message) err("profile", `${message} got "${(error as Error).message}"`);
+      }
+    };
+    mustThrow({ industry: "education", position: "giao_vien" }, "Hãy chọn cấp học bạn đang dạy.");
+    mustThrow({ industry: "education", position: "giao_vien", grade_level: "primary" }, "Hãy chọn ít nhất một mục đích học tiếng Anh.");
+    mustThrow(
+      { industry: "education", position: "giao_vien", grade_level: "nope", teaching_purposes: ["teach_lesson"] },
+      "Hãy chọn cấp học bạn đang dạy.",
+    );
+    const sales = readProfileInput({
+      ...body,
+      industry: "sales",
+      position: "nhan_vien_kinh_doanh",
+      grade_level: "primary",
+      teaching_purposes: ["teach_lesson"],
+    });
+    if ("grade_level" in sales || "teaching_purposes" in sales) err("profile", "stored teaching fields for a non-teaching job");
+    const teacher = readProfileInput({
+      ...body,
+      industry: "education",
+      position: "giao_vien_van",
+      grade_level: "upper_secondary",
+      teaching_purposes: ["teach_lesson", "teach_lesson"],
+    });
+    if (teacher.grade_level !== "upper_secondary" || teacher.teaching_purposes?.join() !== "teach_lesson") {
+      err("profile", "did not keep grade and a unique purpose list");
+    }
+
+    const planOf = async (over: Record<string, unknown>) =>
+      buildPlan({
+        ...base,
+        industry: "education",
+        position: "giao_vien_van",
+        audiences: ["customers", "colleagues"],
+        grade_level: "upper_secondary",
+        teaching_purposes: ["teach_lesson"],
+        ...over,
+      } as unknown as LearnerProfile);
+    const lit = await planOf({});
+    const situation = (plan: { days: { situation: string; title: string }[] }, n: number) => plan.days[n - 1];
+    if (!situation(lit, 2).situation.includes("the grade 11 literature class")) err("literature", "upper secondary class name missing");
+    for (const n of [17, 20, 27]) {
+      if (situation(lit, n).situation.includes("đồng nghiệp")) err("literature", `day ${n} still talks with a colleague`);
+    }
+    for (const n of [15, 16, 21, 25]) {
+      if (situation(lit, n).situation.includes("phụ huynh")) err("literature", `day ${n} still talks with a parent`);
+    }
+    for (const n of [18, 19]) {
+      if (situation(lit, n).situation.includes("quản lý")) err("literature", `day ${n} still talks with a manager`);
+    }
+    const withTeam = await planOf({ teaching_purposes: ["teach_lesson", "talk_colleagues"] });
+    if (!situation(withTeam, 17).situation.includes("đồng nghiệp")) err("literature", "colleague purpose did not add day 17");
+    if (situation(withTeam, 5).situation.includes("đồng nghiệp")) err("literature", "day 5 became a colleague lesson");
+    const withParents = await planOf({ teaching_purposes: ["teach_lesson", "talk_parents"] });
+    if (!situation(withParents, 15).situation.includes("phụ huynh")) err("literature", "parent purpose did not add day 15");
+    const withManager = await planOf({ teaching_purposes: ["teach_lesson", "report_manager"] });
+    if (!situation(withManager, 18).situation.includes("quản lý")) err("literature", "manager purpose did not add day 18");
+    const counting = await planOf({ position: "giao_vien_toan", grade_level: "preschool", teaching_purposes: ["teach_lesson"] });
+    if (!situation(counting, 2).situation.includes("the counting time")) err("math", "preschool class name missing");
+    if (situation(lit, 5).title === situation(counting, 5).title) err("tracks", "literature and math day 5 titles match");
+    const primaryTeacher = await planOf({ position: "giao_vien", grade_level: "primary" });
+    if (!situation(primaryTeacher, 2).situation.includes("the primary class")) err("education", "primary class name missing");
+    const lecturer = await planOf({ position: "giang_vien", grade_level: "upper_secondary" });
+    if (!situation(lecturer, 2).situation.includes("the lecture")) err("education", "lecturer lost the lecture class name");
+    const coach = await planOf({
+      industry: "sports",
+      position: "huan_luyen_vien_the_thao",
+      grade_level: undefined,
+      teaching_purposes: undefined,
+    });
+    if (situation(coach, 20).title !== "Cover for a sick colleague") err("education", "coach lost the colleague cover lesson");
+    if (situation(coach, 21).title !== "Review: talk with parents and plan support") err("education", "coach lost the parent review");
+    const classOnly = await planOf({ position: "giao_vien", grade_level: "lower_secondary", teaching_purposes: ["teach_lesson"] });
+    if (situation(classOnly, 20).title === "Cover for a sick colleague") err("education", "teacher without colleague purpose still covers a class");
+    if (!situation(classOnly, 21).title.includes("last six lessons")) err("education", "teacher without parent purpose still reviews a parent meeting");
   }
 
   const unique = [...new Set(problems)];

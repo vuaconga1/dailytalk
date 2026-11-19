@@ -1,5 +1,5 @@
 import type { PartOfSpeech } from "@/domain/frames";
-import type { FrequencyId, GenderId, LevelId } from "@/domain/profile-options";
+import type { FrequencyId, GenderId, GradeLevelId, LevelId, TeachingPurposeId } from "@/domain/profile-options";
 
 export type { FrequencyId, LevelId, PartOfSpeech };
 
@@ -68,6 +68,10 @@ export type LearnerProfile = {
   position_other: string;
   audiences: string[];
   goals: string[];
+  /** Set only for classroom-teaching positions. */
+  grade_level?: GradeLevelId;
+  /** Set only for classroom-teaching positions. Adult lessons are included only when selected. */
+  teaching_purposes?: TeachingPurposeId[];
   self_level: LevelId;
   frequency: FrequencyId;
   /** Desired study length, 1–6 months; absent on profiles saved before the field existed. */

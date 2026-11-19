@@ -135,6 +135,8 @@ export function learnerContext(profile: LearnerProfile) {
     position: labels.position,
     communicates_with: labels.audiences,
     goals: labels.goals,
+    ...(labels.grade ? { grade: labels.grade } : {}),
+    ...(labels.teaching_purposes.length ? { teaching_purposes: labels.teaching_purposes } : {}),
     level: levelInfo(profile.working_level ?? profile.classification.level).label,
     priorities: profile.classification.priorities.map((p) => p.label),
   };
